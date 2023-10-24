@@ -9,7 +9,7 @@ impl Session {
 
     pub fn request(&self, method: &str, olps: &str) -> String {
         // 创建请求
-        let mut req = Request::new(method, olps);
+        let mut req = Request::new(method, olps).expect("Failed to make a request");
         let _ = req.prepare();
         self.send(&mut req)
     }

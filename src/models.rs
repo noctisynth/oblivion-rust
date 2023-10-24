@@ -6,7 +6,7 @@ use rsa::{
 };
 
 use crate::{
-    exceptions::{AddressAlreadyInUse, ErrorNotPrepared},
+    exceptions::{AddressAlreadyInUse, ErrorNotPrepared, InvalidOblivion},
     utils::{
         decryptor::{decrypt_aes_key, decrypt_message},
         encryptor::{encrypt_aes_key, encrypt_message},
@@ -37,12 +37,16 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn new(method: &str, olps: &str) -> Self {
+    pub fn new(method: &str, olps: &str) -> Result<Self, InvalidOblivion> {
         let path = OblivionPath::new(olps).expect("Invalid olps");
+        if path.get_protocol() != "oblivion".to_string() {
+            return Err(InvalidOblivion);
+        }
+
         let olps = path.get_olps();
         let oblivion = Oblivion::new(method, &olps).unwrap();
         let plain_text = oblivion.plain_text();
-        Self {
+        Ok(Self {
             method: method.to_string(),
             path,
             olps: olps.to_string(),
@@ -52,7 +56,7 @@ impl Request {
             plain_text,
             data: None,
             prepared: false,
-        }
+        })
     }
 
     pub fn prepare(&mut self) -> Result<(), AddressAlreadyInUse> {
@@ -85,7 +89,10 @@ impl Request {
             .read_exact(&mut server_public_key_bytes)
             .expect("Failed to recv RSA_KEY");
 
-        let server_public_key_pem = String::from_utf8(server_public_key_bytes.clone()).unwrap().trim().to_string();
+        let server_public_key_pem = String::from_utf8(server_public_key_bytes.clone())
+            .unwrap()
+            .trim()
+            .to_string();
         println!("server_public_key: {}", server_public_key_pem);
 
         let server_public_key = RsaPublicKey::from_public_key_pem(&server_public_key_pem)
@@ -205,5 +212,17 @@ impl Request {
         ));
         println!("data: {}", self.data.clone().unwrap());
         Ok(self.data.clone().unwrap())
+    }
+
+    pub fn get_method(&mut self) -> String {
+        self.method.clone()
+    }
+
+    pub fn get_olps(&mut self) -> String {
+        self.olps.clone()
+    }
+
+    pub fn get_oblivion(&mut self) -> &Oblivion {
+        &self.oblivion
     }
 }
