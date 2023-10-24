@@ -236,7 +236,7 @@ impl Request {
             &decrypted_aes_key,
             &nonce,
         ));
-        println!("data: {}", self.data.clone().unwrap());
+
         Ok(self.data.clone().unwrap())
     }
 
