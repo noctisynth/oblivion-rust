@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use super::super::exceptions::InvalidOblivion;
-// use super::gear::Kwargs;
 use regex::Regex;
 
 pub(crate) fn length(string: &Vec<u8>) -> Vec<u8> {
@@ -95,19 +94,14 @@ pub struct Oblivion {
     method: String,
     olps: String,
     version: String,
-    // kwargs: Kwargs,
 }
 
 impl Oblivion {
     pub fn new(method: &str, olps: &str) -> Result<Self, InvalidOblivion> {
-        // let method = kwargs.get("method", "GET");
-        // let olps = kwargs.get("olps", "/");
-        // let version = kwargs.get("version", "1.0.0");
         Ok(Self {
             method: method.to_string(),
             olps: olps.to_string(),
             version: String::from_str("1.0.0").unwrap(),
-            // kwargs: kwargs,
         })
     }
 
