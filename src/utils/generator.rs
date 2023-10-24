@@ -3,12 +3,12 @@ extern crate ring;
 
 use ring::rand::{SecureRandom, SystemRandom};
 use rsa::{RsaPrivateKey, RsaPublicKey};
-use ring::aead::AES_256_GCM;
+use ring::aead::AES_128_GCM;
 
 pub(crate) fn generate_aes_key() -> Vec<u8> {
     // 生成随机的 AES_KEY
     let rand = SystemRandom::new();
-    let mut key_bytes = vec![0; AES_256_GCM.key_len()];
+    let mut key_bytes = vec![0; AES_128_GCM.key_len()];
     match rand.fill(&mut key_bytes) {
         Ok(_) => {},
         Err(_) => {}

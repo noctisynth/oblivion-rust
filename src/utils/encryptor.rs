@@ -5,7 +5,7 @@ use ring::aead::Aad;
 use ring::aead::BoundKey;
 use ring::aead::SealingKey;
 use ring::aead::UnboundKey;
-use ring::aead::AES_256_GCM;
+use ring::aead::AES_128_GCM;
 use ring::aead::NONCE_LEN;
 use ring::rand::SecureRandom;
 use ring::rand::SystemRandom;
@@ -18,7 +18,7 @@ pub(crate) fn encrypt_message(message: String, aes_key: &[u8]) -> (Vec<u8>, Vec<
     let data = message.as_bytes().to_owned();
     // 使用 AES 加密数据
     let unbound_key =
-        UnboundKey::new(&AES_256_GCM, &aes_key).expect("Failed to generate an unboundkey");
+        UnboundKey::new(&AES_128_GCM, &aes_key).expect("Failed to generate an unboundkey");
 
     let mut nonce_bytes = vec![0; NONCE_LEN];
     let rand = SystemRandom::new();
