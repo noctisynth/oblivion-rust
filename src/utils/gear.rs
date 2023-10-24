@@ -70,4 +70,8 @@ impl Socket {
     pub fn send(&mut self, data: &[u8]) {
         let _ = self.tcp.write(data);
     }
+
+    pub fn close(&mut self) {
+        let _ = self.tcp.shutdown(std::net::Shutdown::Both);
+    }
 }

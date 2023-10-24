@@ -9,6 +9,7 @@ mod utils {
     pub mod generator;
     pub mod parser;
 }
+use models::{Hook, Server};
 use utils::decryptor::{decrypt_aes_key, decrypt_message};
 use utils::encryptor::{encrypt_aes_key, encrypt_message};
 use utils::generator::{generate_aes_key, generate_key_pair};
@@ -31,14 +32,18 @@ fn test_encrypt() {
 }
 
 fn test_api() {
-    // let req = request("get", "oblivion://127.0.0.1:80/test");
     let req = get("oblivion://127.0.0.1:80/test");
-    // let req = post("oblivion://127.0.0.1:80/test");
-    // let req = forward("oblivion://127.0.0.1:80/test");
     println!("{}", req);
+}
+
+fn test_server() {
+    let mut hooks = Vec::<Hook>::new();
+    hooks.push(Hook::new("/test", "请快点毁灭人类!", "GET"));
+    Server::new("0.0.0.0", 80, hooks, "404 Not Found").run();
 }
 
 fn main() {
     test_encrypt();
-    test_api();
+    // test_api();
+    test_server();
 }
