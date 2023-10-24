@@ -1,9 +1,9 @@
-// use std::collections::HashMap;
-
 use ring::{
     aead::{Nonce, NonceSequence},
     error::Unspecified,
 };
+use std::io::{Read, Write};
+use std::net::TcpStream;
 
 pub struct RandNonceSequence {
     nonce: Vec<u8>,
@@ -22,35 +22,52 @@ impl RandNonceSequence {
     }
 }
 
-// pub struct Kwargs {
-//     args: HashMap<String, String>,
-// }
+pub struct Socket {
+    tcp: TcpStream,
+}
 
-// impl Kwargs {
-//     pub fn new(map: HashMap<String, String>) -> Self {
-//         Self { args: map }
-//     }
+impl Socket {
+    pub fn new(tcp: TcpStream) -> Self {
+        Self { tcp }
+    }
 
-//     fn get_args(&self) -> &HashMap<String, String> {
-//         &self.args
-//     }
+    pub fn recv_len(&mut self) -> usize {
+        let mut len_bytes: Vec<u8> = vec![0; 4];
+        let _ = self.tcp.read_exact(&mut len_bytes); // 捕获RSA_KEY长度
 
-//     pub fn get(&self, key: &str, default: &str) -> String {
-//         match self.args.get(key) {
-//             Some(value) => value.clone(),
-//             None => default.to_string(),
-//         }
-//     }
+        let len_int: i32 = std::str::from_utf8(&len_bytes)
+            .unwrap()
+            .parse()
+            .expect("Failed to receieve length");
 
-//     pub fn insert(&mut self, key: &str, value: &str) {
-//         self.args.insert(key.to_string(), value.to_string());
-//     }
+        let len: usize = len_int
+            .try_into()
+            .expect("Failed to generate unsize value");
+        len
+    }
 
-//     pub fn remove(&mut self, key: &str) -> bool {
-//         self.args.remove(key).is_some()
-//     }
+    pub fn recv(&mut self, len: usize) -> Vec<u8> {
+        let mut recv_bytes: Vec<u8> = vec![0; len];
+        let _ = self.tcp
+            .read_exact(&mut recv_bytes)
+            .expect("Failed to recv RSA_KEY");
+        recv_bytes
+    }
 
-//     pub fn haskey(&self, key: &str) -> bool {
-//         self.args.contains_key(key)
-//     }
-// }
+    pub fn recv_str(&mut self, len: usize) -> String {
+        let mut recv_bytes: Vec<u8> = vec![0; len];
+        let _ = self.tcp
+            .read_exact(&mut recv_bytes)
+            .expect("Failed to recv RSA_KEY");
+
+        let recv_str = String::from_utf8(recv_bytes.clone())
+            .unwrap()
+            .trim()
+            .to_string();
+        recv_str
+    }
+
+    pub fn send(&mut self, data: &[u8]) {
+        let _ = self.tcp.write(data);
+    }
+}
