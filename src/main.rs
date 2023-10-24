@@ -31,19 +31,21 @@ fn test_encrypt() {
     println!("End!");
 }
 
+#[allow(dead_code)]
 fn test_api() {
     let req = get("oblivion://127.0.0.1:80/test");
     println!("{}", req);
 }
 
+#[allow(dead_code)]
 fn test_server() {
     let mut hooks = Vec::<Hook>::new();
     hooks.push(Hook::new("/test", "请快点毁灭人类!", "GET"));
-    Server::new("0.0.0.0", 80, hooks, "404 Not Found").run();
+    Server::new("0.0.0.0", 813, hooks, "404 Not Found").run();
 }
 
 fn main() {
     test_encrypt();
-    // test_api();
+    test_api();
     test_server();
 }

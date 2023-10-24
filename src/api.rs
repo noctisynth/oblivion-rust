@@ -5,6 +5,7 @@ pub(crate) fn request(method: &str, olps: &str) -> String {
     session.request(method, olps)
 }
 
+#[allow(dead_code)]
 pub(crate) fn get(olps: &str) -> String {
     request("get", olps)
 }
