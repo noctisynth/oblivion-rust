@@ -2,8 +2,11 @@ use ring::{
     aead::{Nonce, NonceSequence},
     error::Unspecified,
 };
-use std::io::{Read, Write};
-use std::net::TcpStream;
+use crate::exceptions;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
 pub struct RandNonceSequence {
     nonce: Vec<u8>,
@@ -31,47 +34,53 @@ impl Socket {
         Self { tcp }
     }
 
-    pub fn recv_len(&mut self) -> usize {
+    pub async fn recv_len(&mut self) -> Result<usize, exceptions::OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; 4];
-        let _ = self.tcp.read_exact(&mut len_bytes); // 捕获RSA_KEY长度
+        let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
 
         let len_int: i32 = std::str::from_utf8(&len_bytes)
             .unwrap()
             .parse()
             .expect("Failed to receieve length");
 
-        let len: usize = len_int
-            .try_into()
-            .expect("Failed to generate unsize value");
-        len
+        let len: usize = len_int.try_into().expect("Failed to generate unsize value");
+        Ok(len)
     }
 
-    pub fn recv(&mut self, len: usize) -> Vec<u8> {
+    pub async fn recv_int(&mut self, len: usize) -> Result<i32, exceptions::OblivionException>{
+        let mut len_bytes: Vec<u8> = vec![0; len];
+        let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
+
+        let int: i32 = std::str::from_utf8(&len_bytes)
+            .unwrap()
+            .parse()
+            .expect("Failed to receieve length");
+
+        Ok(int)
+    }
+
+    pub async fn recv(&mut self, len: usize) -> Vec<u8> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
-        let _ = self.tcp
-            .read_exact(&mut recv_bytes)
-            .expect("Failed to recv RSA_KEY");
+        let _ = self.tcp.read_exact(&mut recv_bytes).await.unwrap();
         recv_bytes
     }
 
-    pub fn recv_str(&mut self, len: usize) -> String {
+    pub async fn recv_str(&mut self, len: usize) -> Result<String, exceptions::OblivionException>{
         let mut recv_bytes: Vec<u8> = vec![0; len];
-        let _ = self.tcp
-            .read_exact(&mut recv_bytes)
-            .expect("Failed to recv RSA_KEY");
+        let _ = self.tcp.read_exact(&mut recv_bytes).await.unwrap();
 
         let recv_str = String::from_utf8(recv_bytes.clone())
             .unwrap()
             .trim()
             .to_string();
-        recv_str
+        Ok(recv_str)
     }
 
-    pub fn send(&mut self, data: &[u8]) {
-        let _ = self.tcp.write(data);
+    pub async fn send(&mut self, data: &[u8]) {
+        let _ = self.tcp.write(data).await.unwrap();
     }
 
-    pub fn close(&mut self) {
-        let _ = self.tcp.shutdown(std::net::Shutdown::Both);
+    pub async fn close(&mut self) {
+        let _ = self.tcp.shutdown().await.unwrap();
     }
 }

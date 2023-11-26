@@ -1,13 +1,18 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use super::super::exceptions::InvalidOblivion;
+use crate::exceptions::OblivionException;
 use regex::Regex;
 
-pub(crate) fn length(string: &Vec<u8>) -> Vec<u8> {
-    let str_num = string.len().to_string();
+pub fn length(bytes: &Vec<u8>) -> Result<Vec<u8>, OblivionException> {
+    let str_num = bytes.len().to_string();
     if str_num.len() == 4 {
-        return str_num.into_bytes();
+        return Ok(str_num.into_bytes());
+    } else if str_num.len() >= 4 {
+        return Err(OblivionException::DataTooLarge(Some(format!(
+            "Data in {} exceed max data limit!",
+            bytes.len()
+        ))));
     }
 
     let mut list_num: Vec<char> = str_num.chars().collect();
@@ -15,7 +20,7 @@ pub(crate) fn length(string: &Vec<u8>) -> Vec<u8> {
         list_num.insert(0, '0');
     }
 
-    list_num.into_iter().collect::<String>().into_bytes()
+    Ok(list_num.into_iter().collect::<String>().into_bytes())
 }
 
 pub struct OblivionPath {
@@ -26,7 +31,7 @@ pub struct OblivionPath {
 }
 
 impl OblivionPath {
-    pub fn new(obl_str: &str) -> Result<Self, InvalidOblivion> {
+    pub fn new(obl_str: &str) -> Result<Self, OblivionException> {
         let re = Regex::new(
             r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<url>/.+)?$",
         )
@@ -69,7 +74,9 @@ impl OblivionPath {
                 olps: url,
             })
         } else {
-            Err(InvalidOblivion)
+            Err(OblivionException::InvalidOblivion(Some(
+                "Bad Olivion location path sequence found.".to_string(),
+            )))
         }
     }
 
@@ -97,7 +104,7 @@ pub struct Oblivion {
 }
 
 impl Oblivion {
-    pub fn new(method: &str, olps: &str) -> Result<Self, InvalidOblivion> {
+    pub fn new(method: &str, olps: &str) -> Result<Self, OblivionException> {
         Ok(Self {
             method: method.to_string(),
             olps: olps.to_string(),

@@ -1,6 +1,13 @@
 use super::sessions::Session;
 
-pub(crate) fn request(method: &str, olps: &str) -> String {
+pub(crate) fn request(
+    method: &str,
+    olps: &str,
+    data: Option<Vec<u8>>,
+    file: Option<Vec<u8>>,
+    key_pair: (EphemeralSecret, PublicKey),
+    tfo: bool,
+) -> String {
     let session = Session::new();
     session.request(method, olps)
 }
