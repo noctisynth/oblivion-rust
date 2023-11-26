@@ -71,6 +71,10 @@ impl OSC {
         let status_code = format!("{}", self.status_code);
         status_code.into_bytes()
     }
+
+    pub fn get_status_code(&mut self) -> i32 {
+        self.status_code.clone()
+    }
 }
 
 pub struct OKE<'a> {
@@ -86,7 +90,7 @@ impl<'a> OKE<'a> {
     pub fn new(
         private_key: Option<&'a EphemeralSecret>,
         public_key: Option<PublicKey>,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, OblivionException> {
         Ok(Self {
             length: None,
             public_key: public_key,
@@ -164,6 +168,10 @@ impl<'a> OKE<'a> {
         plain_salt_bytes.extend(salt_bytes);
         plain_salt_bytes
     }
+
+    pub fn get_aes_key(&mut self) -> Vec<u8> {
+        self.shared_aes_key.clone().unwrap()
+    }
 }
 
 pub struct OED {
@@ -236,7 +244,7 @@ impl OED {
         Ok(self.clone())
     }
 
-    pub fn from_dict(&mut self, dict: Value) -> Result<Self, ()> {
+    pub fn from_dict(&mut self, dict: Value) -> Result<Self, OblivionException> {
         let (encrypted_data, tag, nonce) =
             encrypt_message(dict.to_string(), &self.aes_key.clone().unwrap());
         (self.encrypted_data, self.tag, self.nonce) =
@@ -249,7 +257,7 @@ impl OED {
         Ok(self.clone())
     }
 
-    pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<Self, ()> {
+    pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<Self, OblivionException> {
         let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key.clone().unwrap());
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
@@ -374,5 +382,9 @@ impl OED {
         plain_bytes.extend(tag_bytes);
 
         plain_bytes
+    }
+
+    pub fn get_data(&mut self) -> Vec<u8> {
+        self.data.clone().unwrap()
     }
 }

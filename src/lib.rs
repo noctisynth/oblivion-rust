@@ -1,6 +1,6 @@
-// pub mod api;
+pub mod api;
 pub mod exceptions;
-// pub mod sessions;
+pub mod sessions;
 pub mod utils {
     pub mod decryptor;
     pub mod encryptor;

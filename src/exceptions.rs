@@ -10,6 +10,7 @@ pub enum OblivionException {
     ConnectTimedOut(Option<String>),
     DataTooLarge(Option<String>),
     AllAttemptsRetryFailed(Option<String>),
+    UnsupportedMethod(Option<String>),
 }
 
 impl OblivionException {
@@ -54,6 +55,9 @@ impl core::fmt::Display for OblivionException {
             Self::DataTooLarge(info) => OblivionException::write_error(f, "DataTooLarge", info),
             Self::AllAttemptsRetryFailed(info) => {
                 OblivionException::write_error(f, "AllAttemptsRetryFailed", info)
+            }
+            Self::UnsupportedMethod(info) => {
+                OblivionException::write_error(f, "UnsupportedMethod", info)
             }
         }
     }

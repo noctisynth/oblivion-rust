@@ -1,4 +1,9 @@
-use crate::models::client::Request;
+use serde_json::Value;
+
+use crate::{
+    exceptions::OblivionException,
+    models::client::{Request, Response},
+};
 
 pub struct Session;
 
@@ -7,28 +12,26 @@ impl Session {
         Self
     }
 
-    pub fn request(&self, method: &str, olps: &str) -> String {
-        // 创建请求
-        let mut req = Request::new(method, olps).expect("Failed to make a request");
-        let _ = req.prepare();
-        self.send(&mut req)
+    pub async fn request(
+        &self,
+        method: String,
+        olps: String,
+        data: Option<Value>,
+        file: Option<Vec<u8>>,
+        tfo: bool,
+    ) -> Result<Response, OblivionException> {
+        let mut req = Request::new(method, olps, data, file, tfo)?;
+        req.prepare().await?;
+        Ok(self.send(&mut req).await?)
     }
 
-    pub fn send(&self, request: &mut Request) -> String {
+    pub async fn send(&self, request: &mut Request) -> Result<Response, OblivionException> {
         if request.is_prepared() != true {
             let _ = request.prepare();
         }
 
         // 发送请求
-        request.send();
-        request.recv().unwrap()
-    }
-
-    pub fn get(&mut self, olps: &str) -> String{
-        self.request("GET", olps)
-    }
-
-    pub fn post(&mut self, olps: &str) -> String{
-        self.request("POST", olps)
+        request.send().await?;
+        request.recv().await
     }
 }

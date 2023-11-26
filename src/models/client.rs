@@ -1,13 +1,14 @@
 use crate::models::packet::{OED, OKE, OSC};
 
-use crate::exceptions::{self, OblivionException};
+use crate::exceptions::OblivionException;
 
-use crate::utils::generator::{generate_key_pair, generate_random_salt};
+use crate::utils::gear::Socket;
+use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::{length, Oblivion, OblivionPath};
 
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
-use serde_json::{from_str, to_string, Value};
+use serde_json::{from_str, json, to_string, Value};
 use tokio::net::TcpStream;
 
 pub struct Response {
@@ -51,22 +52,23 @@ pub struct Request {
     method: String,
     olps: String,
     path: OblivionPath,
-    data: String,
-    file: Vec<u8>,
+    data: Option<Value>,
+    file: Option<Vec<u8>>,
     tfo: bool,
     plain_text: String,
     prepared: bool,
     private_key: Option<EphemeralSecret>,
     public_key: Option<PublicKey>,
-    tcp: Option<TcpStream>,
+    aes_key: Option<Vec<u8>>,
+    tcp: Option<Socket>,
 }
 
 impl Request {
     pub fn new(
         method: String,
         olps: String,
-        data: String,
-        file: Vec<u8>,
+        data: Option<Value>,
+        file: Option<Vec<u8>>,
         tfo: bool,
     ) -> Result<Self, OblivionException> {
         let method = method.to_uppercase();
@@ -85,6 +87,7 @@ impl Request {
             prepared: false,
             private_key: None,
             public_key: None,
+            aes_key: None,
             tcp: None,
         })
     }
@@ -107,9 +110,86 @@ impl Request {
                     )))
                 }
             };
+        self.tcp = Some(Socket::new(tcp));
 
         // TODO 在这里启用TCP Fast Open
 
+        self.send_header().await?;
+
+        let mut oke = OKE::new(Some(&self.private_key.as_ref().unwrap()), None)?;
+        self.aes_key = Some(oke.get_aes_key());
+        oke.to_stream(self.tcp.as_mut().unwrap()).await;
+
+        self.prepared = true;
         Ok(())
+    }
+
+    pub async fn send_header(&mut self) -> Result<(), OblivionException> {
+        let tcp = self.tcp.as_mut().unwrap();
+        let header = self.plain_text.as_bytes().to_vec();
+        tcp.send(&length(&header)?).await;
+        tcp.send(&header).await;
+        Ok(())
+    }
+
+    pub async fn send(&mut self) -> Result<(), OblivionException> {
+        let tcp = self.tcp.as_mut().unwrap();
+        let mut oed = if self.method == "POST" {
+            let oed = if self.data.is_none() {
+                let mut oed = OED::new(self.aes_key.clone());
+                let oed = oed.from_dict(json!({}));
+                oed
+            } else {
+                let mut oed = OED::new(self.aes_key.clone());
+                let oed = oed.from_dict(self.data.clone().unwrap());
+                oed
+            };
+            oed
+        } else if self.method == "PUT" {
+            let mut oed = if self.data.is_none() {
+                let mut oed = OED::new(self.aes_key.clone());
+                let oed = oed.from_dict(json!({}))?;
+                oed
+            } else {
+                let mut oed = OED::new(self.aes_key.clone());
+                let oed = oed.from_dict(self.data.clone().unwrap())?;
+                oed
+            };
+            oed.to_stream(tcp, 5).await?;
+
+            let mut oed = OED::new(self.aes_key.clone());
+            let oed = oed.from_bytes(self.file.clone().unwrap());
+            oed
+        } else {
+            Err(OblivionException::UnsupportedMethod(None))
+        }?;
+
+        oed.to_stream(tcp, 5).await?;
+        Ok(())
+    }
+
+    pub async fn recv(&mut self) -> Result<Response, OblivionException> {
+        let tcp = self.tcp.as_mut().unwrap();
+
+        if !self.prepared {
+            Err(OblivionException::ErrorNotPrepared(None))
+        } else {
+            let mut oed = OED::new(self.aes_key.clone());
+            let mut oed = oed.from_stream(tcp, 5).await?;
+
+            let mut osc = OSC::from_stream(tcp).await?;
+
+            let response = Response::new(
+                self.plain_text.clone(),
+                oed.get_data(),
+                self.olps.clone(),
+                osc.get_status_code(),
+            );
+            Ok(response)
+        }
+    }
+
+    pub fn is_prepared(&mut self) -> bool {
+        self.prepared.clone()
     }
 }

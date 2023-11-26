@@ -1,30 +1,48 @@
-use p256::{ecdh::EphemeralSecret, PublicKey};
+use serde_json::Value;
+
+use crate::{exceptions::OblivionException, models::client::Response};
 
 use super::sessions::Session;
 
-pub(crate) fn request(
+pub async fn request(
     method: &str,
     olps: &str,
-    data: Option<Vec<u8>>,
+    data: Option<Value>,
     file: Option<Vec<u8>>,
-    key_pair: (EphemeralSecret, PublicKey),
     tfo: bool,
-) -> String {
+) -> Result<Response, OblivionException> {
     let session = Session::new();
-    session.request(method, olps)
+    session
+        .request(method.to_string(), olps.to_string(), data, file, tfo)
+        .await
 }
 
-#[allow(dead_code)]
-pub(crate) fn get(olps: &str) -> String {
-    request("get", olps)
+pub async fn get(olps: &str, tfo: bool) -> Result<Response, OblivionException> {
+    request("get", olps, None, None, tfo).await
 }
 
-#[allow(dead_code)]
-pub(crate) fn post(olps: &str) -> String {
-    request("post", olps)
+pub async fn post(
+    olps: &str,
+    data: Option<Value>,
+    tfo: bool,
+) -> Result<Response, OblivionException> {
+    request("post", olps, data, None, tfo).await
 }
 
-#[allow(dead_code)]
-pub(crate) fn forward(olps: &str) -> String {
-    request("forward", olps)
+pub async fn put(
+    olps: &str,
+    data: Option<Value>,
+    file: Vec<u8>,
+    tfo: bool,
+) -> Result<Response, OblivionException> {
+    request("put", olps, data, Some(file), tfo).await
+}
+
+pub async fn forward(
+    olps: &str,
+    data: Option<Value>,
+    file: Vec<u8>,
+    tfo: bool,
+) -> Result<Response, OblivionException> {
+    request("forward", olps, data, Some(file), tfo).await
 }
