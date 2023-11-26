@@ -12,7 +12,7 @@ use p256::PublicKey;
 use rand::Rng;
 use serde_json::Value;
 
-struct ACK {
+pub struct ACK {
     sequence: String,
 }
 
@@ -25,7 +25,7 @@ impl ACK {
         })
     }
 
-    pub fn equel_bytes(&mut self, __value: &[u8]) -> bool {
+    pub fn equal_bytes(&mut self, __value: &[u8]) -> bool {
         __value == self.sequence.clone().into_bytes()
     }
 
@@ -45,7 +45,7 @@ impl ACK {
     }
 }
 
-struct OSC {
+pub struct OSC {
     status_code: i32,
 }
 
@@ -73,7 +73,7 @@ impl OSC {
     }
 }
 
-struct OKE<'a> {
+pub struct OKE<'a> {
     length: Option<i32>,
     public_key: Option<PublicKey>,
     private_key: Option<&'a EphemeralSecret>,
@@ -166,7 +166,7 @@ impl<'a> OKE<'a> {
     }
 }
 
-struct OED {
+pub struct OED {
     length: Option<i32>,
     aes_key: Option<Vec<u8>>,
     data: Option<Vec<u8>>,

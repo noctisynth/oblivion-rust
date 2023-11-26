@@ -1,6 +1,5 @@
 // pub mod api;
 pub mod exceptions;
-// pub mod models;
 // pub mod sessions;
 pub mod utils {
     pub mod decryptor;
@@ -13,6 +12,7 @@ pub mod utils {
 #[allow(dead_code)]
 pub mod models {
     pub mod packet;
+    pub mod client;
 }
 
 // use crate::utils::{

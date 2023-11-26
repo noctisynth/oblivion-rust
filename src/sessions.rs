@@ -1,4 +1,4 @@
-use super::models::Request;
+use crate::models::client::Request;
 
 pub struct Session;
 
