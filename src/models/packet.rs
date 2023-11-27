@@ -30,9 +30,8 @@ impl ACK {
     }
 
     pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<Self, OblivionException> {
-        let len_sequence = stream.recv_len().await?;
         Ok(Self {
-            sequence: stream.recv_str(len_sequence).await?,
+            sequence: stream.recv_str(4).await?,
         })
     }
 
@@ -82,7 +81,7 @@ pub struct OKE<'a> {
     public_key: Option<PublicKey>,
     private_key: Option<&'a EphemeralSecret>,
     salt: Option<Vec<u8>>,
-    remote_public_key: Option<Vec<u8>>,
+    remote_public_key: Option<PublicKey>,
     shared_aes_key: Option<Vec<u8>>,
 }
 
@@ -122,7 +121,8 @@ impl<'a> OKE<'a> {
 
     pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<OKE<'a>, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
-        self.remote_public_key = Some(stream.recv(remote_public_key_length).await);
+        let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
+        self.public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.as_ref().unwrap(),
             self.public_key.unwrap(),
@@ -136,12 +136,13 @@ impl<'a> OKE<'a> {
         stream: &mut Socket,
     ) -> Result<OKE<'a>, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
-        self.remote_public_key = Some(stream.recv(remote_public_key_length).await);
+        let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
+        self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         let salt_length = stream.recv_len().await?;
         self.salt = Some(stream.recv(salt_length).await);
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.as_ref().unwrap(),
-            self.public_key.unwrap(),
+            self.remote_public_key.unwrap(),
             &self.salt.as_mut().unwrap(),
         ));
         Ok(self.clone())

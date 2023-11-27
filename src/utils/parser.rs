@@ -108,7 +108,7 @@ impl Oblivion {
         Ok(Self {
             method: method.to_string(),
             olps: olps.to_string(),
-            version: String::from_str("1.0.0").unwrap(),
+            version: String::from_str("1.1").unwrap(),
         })
     }
 

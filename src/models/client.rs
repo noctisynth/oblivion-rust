@@ -112,11 +112,18 @@ impl Request {
             };
         self.tcp = Some(Socket::new(tcp));
 
+        if self.tfo {};
         // TODO 在这里启用TCP Fast Open
 
         self.send_header().await?;
 
-        let mut oke = OKE::new(Some(&self.private_key.as_ref().unwrap()), None)?;
+        let mut oke = OKE::new(
+            Some(&self.private_key.as_ref().unwrap()),
+            self.public_key.clone(),
+        )?;
+        let mut oke = oke
+            .from_stream_with_salt(self.tcp.as_mut().unwrap())
+            .await?;
         self.aes_key = Some(oke.get_aes_key());
         oke.to_stream(self.tcp.as_mut().unwrap()).await;
 
@@ -133,6 +140,10 @@ impl Request {
     }
 
     pub async fn send(&mut self) -> Result<(), OblivionException> {
+        if self.method == "GET" {
+            return Ok(());
+        };
+
         let tcp = self.tcp.as_mut().unwrap();
         let mut oed = if self.method == "POST" {
             let oed = if self.data.is_none() {

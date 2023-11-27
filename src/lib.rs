@@ -8,17 +8,7 @@ pub mod utils {
     pub mod generator;
     pub mod parser;
 }
-
-#[allow(dead_code)]
 pub mod models {
-    pub mod packet;
     pub mod client;
+    pub mod packet;
 }
-
-// use crate::utils::{
-//     decryptor::decrypt_bytes,
-//     encryptor::encrypt_message,
-//     generator::{generate_key_pair, generate_shared_key},
-// };
-// use utils::generator::generate_random_salt;
-
