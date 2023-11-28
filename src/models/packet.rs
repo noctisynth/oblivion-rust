@@ -122,10 +122,10 @@ impl<'a> OKE<'a> {
     pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<OKE<'a>, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
-        self.public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
+        self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.as_ref().unwrap(),
-            self.public_key.unwrap(),
+            self.remote_public_key.unwrap(),
             &self.salt.as_mut().unwrap(),
         ));
         Ok(self.clone())
@@ -154,6 +154,7 @@ impl<'a> OKE<'a> {
 
     pub async fn to_stream_with_salt(&mut self, stream: &mut Socket) {
         stream.send(&self.plain_data()).await;
+        stream.send(&self.plain_salt()).await;
     }
 
     pub fn plain_data(&mut self) -> Vec<u8> {
@@ -224,10 +225,17 @@ impl OED {
 
         for i in (0..data_size).step_by(size) {
             let buffer = &data[i..std::cmp::min(i + size, data_size)];
-            let buffer_length = buffer.len().to_string();
+            let buffer_length = length(&buffer.to_vec()).unwrap();
             let mut serialized_chunk = Vec::with_capacity(buffer_length.len() + buffer.len());
 
-            serialized_chunk.extend_from_slice(buffer_length.as_bytes());
+            if i + size > data_size {
+                serialized_chunk.extend_from_slice(&buffer_length);
+                serialized_chunk.extend_from_slice(buffer);
+                serialized_bytes.push(serialized_chunk);
+                break;
+            };
+
+            serialized_chunk.extend_from_slice(&buffer_length);
             serialized_chunk.extend_from_slice(buffer);
 
             serialized_bytes.push(serialized_chunk);

@@ -49,6 +49,7 @@ impl ServerConnection {
 
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
         oke.to_stream_with_salt(stream).await;
+        let mut oke = oke.from_stream(stream).await?;
         self.aes_key = Some(oke.get_aes_key());
 
         if request.get_method() == "POST" {
@@ -89,7 +90,7 @@ pub struct NotFound;
 
 impl Handler for NotFound {
     fn handle(&mut self, _: &mut OblivionRequest) -> BaseResponse {
-        todo!()
+        BaseResponse::TextResponse("404 Not Found".to_owned(), 404)
     }
 }
 
@@ -98,23 +99,26 @@ pub struct Router {
 }
 
 impl Router {
-    pub fn new() -> Self {
-        Self {
-            routes: HashMap::new(),
-        }
+    pub fn new(routes: Option<HashMap<String, Arc<Mutex<Box<dyn Handler>>>>>) -> Self {
+        let routes = if routes.is_none() {
+            HashMap::new()
+        } else {
+            routes.unwrap()
+        };
+        Self { routes: routes }
     }
 
-    // fn add_route(&mut self, route: String, handler: impl Handler + 'static) {
-    //     self.routes.insert(route, Box::new(handler));
-    // }
+    pub fn add_route(&mut self, route: String, handler: impl Handler + 'static) {
+        self.routes
+            .insert(route, Arc::new(Mutex::new(Box::new(handler))));
+    }
 
     pub async fn get_handler(&self, route: String) -> Arc<Mutex<Box<dyn Handler>>> {
         if let Some(handler) = self.routes.get(&route) {
             let handler = handler;
             handler.to_owned()
         } else {
-            // Handle unknown route
-            unimplemented!()
+            Arc::new(Mutex::new(Box::new(NotFound {})))
         }
     }
 }
@@ -164,7 +168,10 @@ impl Server {
 
         let handler = self.routes.get_handler(request.get_olps()).await;
         let status_code =
-            response(handler, stream, &mut request, connection.aes_key.unwrap()).await?;
+            match response(handler, stream, &mut request, connection.aes_key.unwrap()).await {
+                Ok(status_code) => status_code,
+                Err(_) => return Err(OblivionException::ServerError(None, 501)),
+            };
 
         Ok((request.to_owned(), status_code))
     }

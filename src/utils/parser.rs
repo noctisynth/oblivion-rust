@@ -141,7 +141,7 @@ pub struct OblivionRequest {
 impl OblivionRequest {
     pub fn new(header: &str) -> Result<Self, OblivionException> {
         let plain_text = header;
-        let re = Regex::new(r"(\w+) (\S+) (\w+)/(\d+\.\d+)").unwrap();
+        let re = Regex::new(r"(?P<method>\w+) (?P<olps>\S+) (?P<protocol>\w+)/(?P<version>\d+\.\d+)").unwrap();
 
         if let Some(captures) = re.captures(header) {
             let mut extracted_values: HashMap<&str, Option<&str>> = HashMap::new();
@@ -154,22 +154,22 @@ impl OblivionRequest {
             }
 
             let method = extracted_values
-                .get("0")
+                .get("method")
                 .unwrap_or(&None)
                 .unwrap_or_default()
                 .to_string();
             let olps = extracted_values
-                .get("1")
+                .get("olps")
                 .unwrap_or(&None)
                 .unwrap_or_default()
                 .to_string();
             let protocol = extracted_values
-                .get("2")
+                .get("protocol")
                 .unwrap_or(&Some("80"))
                 .unwrap_or_default()
                 .to_string();
             let version = extracted_values
-                .get("3")
+                .get("version")
                 .unwrap_or(&Some("/"))
                 .unwrap_or_default()
                 .to_string();
