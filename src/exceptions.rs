@@ -1,3 +1,5 @@
+use crate::utils::parser::OblivionRequest;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum OblivionException {
     ErrorNotPrepared(Option<String>),
@@ -11,6 +13,7 @@ pub enum OblivionException {
     DataTooLarge(Option<String>),
     AllAttemptsRetryFailed(Option<String>),
     UnsupportedMethod(Option<String>),
+    ServerError(Option<OblivionRequest>, i32),
 }
 
 impl OblivionException {
@@ -58,6 +61,28 @@ impl core::fmt::Display for OblivionException {
             }
             Self::UnsupportedMethod(info) => {
                 OblivionException::write_error(f, "UnsupportedMethod", info)
+            }
+            Self::ServerError(request, status_code) => {
+                let request = request.clone();
+                if request.is_none() {
+                    OblivionException::write_error(f, "ServerError", &Some(format!("ServerError code {}", status_code)))
+                } else {
+                    let mut request = request.unwrap();
+                    OblivionException::write_error(
+                        f,
+                        "ServerError",
+                        &format!(
+                            "{}/{} {} From {} {} {}",
+                            request.get_protocol(),
+                            request.get_version(),
+                            request.get_method(),
+                            request.get_ip(),
+                            request.get_olps(),
+                            status_code
+                        )
+                        .into(),
+                    )
+                }
             }
         }
     }

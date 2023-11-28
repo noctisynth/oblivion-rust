@@ -1,8 +1,8 @@
+use crate::exceptions;
 use ring::{
     aead::{Nonce, NonceSequence},
     error::Unspecified,
 };
-use crate::exceptions;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -34,6 +34,10 @@ impl Socket {
         Self { tcp }
     }
 
+    pub fn set_ttl(&mut self, ttl: u32) {
+        self.tcp.set_ttl(ttl).unwrap()
+    }
+
     pub async fn recv_len(&mut self) -> Result<usize, exceptions::OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; 4];
         let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
@@ -47,7 +51,7 @@ impl Socket {
         Ok(len)
     }
 
-    pub async fn recv_int(&mut self, len: usize) -> Result<i32, exceptions::OblivionException>{
+    pub async fn recv_int(&mut self, len: usize) -> Result<i32, exceptions::OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; len];
         let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
 
@@ -65,7 +69,7 @@ impl Socket {
         recv_bytes
     }
 
-    pub async fn recv_str(&mut self, len: usize) -> Result<String, exceptions::OblivionException>{
+    pub async fn recv_str(&mut self, len: usize) -> Result<String, exceptions::OblivionException> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
         let _ = self.tcp.read_exact(&mut recv_bytes).await.unwrap();
 

@@ -11,4 +11,7 @@ pub mod utils {
 pub mod models {
     pub mod client;
     pub mod packet;
+    pub mod render;
+    pub mod router;
+    pub mod server;
 }
