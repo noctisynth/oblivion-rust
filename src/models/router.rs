@@ -1,68 +1,32 @@
-use crate::exceptions::OblivionException;
+use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-pub enum Router {
-    Route(String),
-    Startswith(String),
-}
+use super::server::{Handler, NotFound};
 
-pub struct Route {
-    olps: String,
-}
-
-impl Route {
-    pub fn new(olps: &str) -> Result<Self, OblivionException> {
-        Ok(Self {
-            olps: olps.to_string(),
-        })
-    }
-
-    pub fn verify(&mut self, olps: &str) -> bool {
-        olps.trim_end_matches("/") == self.olps.trim_end_matches("/")
-    }
-
-    pub fn get_olps(&mut self) -> String {
-        self.olps.clone()
-    }
-}
-
-pub struct Startswith {
-    olps: String,
-}
-
-impl Startswith {
-    pub fn new(olps: &str) -> Result<Self, OblivionException> {
-        Ok(Self {
-            olps: olps.to_string(),
-        })
-    }
-
-    pub fn verify(&mut self, olps: &str) -> bool {
-        olps.trim_end_matches("/") == self.olps.trim_end_matches("/")
-    }
-
-    pub fn get_olps(&mut self) -> String {
-        self.olps.clone()
-    }
+pub struct Router {
+    routes: HashMap<String, Arc<Mutex<Box<dyn Handler>>>>,
 }
 
 impl Router {
-    pub fn verify(&mut self, olps: &str) -> Result<bool, OblivionException> {
-        match self {
-            Self::Route(info) => {
-                let mut route = Route::new(&info)?;
-                Ok(route.verify(olps))
-            }
-            Self::Startswith(info) => {
-                let mut route = Startswith::new(&info)?;
-                Ok(route.verify(olps))
-            }
-        }
+    pub fn new(routes: Option<HashMap<String, Arc<Mutex<Box<dyn Handler>>>>>) -> Self {
+        let routes = if routes.is_none() {
+            HashMap::new()
+        } else {
+            routes.unwrap()
+        };
+        Self { routes: routes }
     }
 
-    pub fn get_olps(&mut self) -> String {
-        match self {
-            Self::Route(info) => info.to_string(),
-            Self::Startswith(info) => info.to_string(),
+    pub fn add_route(&mut self, route: String, handler: impl Handler + 'static) {
+        self.routes
+            .insert(route, Arc::new(Mutex::new(Box::new(handler))));
+    }
+
+    pub async fn get_handler(&self, route: String) -> Arc<Mutex<Box<dyn Handler>>> {
+        if let Some(handler) = self.routes.get(&route) {
+            let handler = handler;
+            handler.to_owned()
+        } else {
+            Arc::new(Mutex::new(Box::new(NotFound {})))
         }
     }
 }

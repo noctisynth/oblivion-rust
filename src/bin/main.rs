@@ -1,5 +1,5 @@
 use oblivion::models::server::Server;
-use oblivion::models::server::Router;
+use oblivion::models::router::Router;
 
 #[tokio::main]
 async fn main() {

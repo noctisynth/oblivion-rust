@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
@@ -13,12 +12,11 @@ use crate::utils::parser::OblivionRequest;
 
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
-// use tokio::net::TcpListener;
 
 use serde_json::from_slice;
 use tokio::net::TcpListener;
 
-// use super::router::Router;
+use super::router::Router;
 
 pub struct ServerConnection {
     private_key: EphemeralSecret,
@@ -91,35 +89,6 @@ pub struct NotFound;
 impl Handler for NotFound {
     fn handle(&mut self, _: &mut OblivionRequest) -> BaseResponse {
         BaseResponse::TextResponse("404 Not Found".to_owned(), 404)
-    }
-}
-
-pub struct Router {
-    routes: HashMap<String, Arc<Mutex<Box<dyn Handler>>>>,
-}
-
-impl Router {
-    pub fn new(routes: Option<HashMap<String, Arc<Mutex<Box<dyn Handler>>>>>) -> Self {
-        let routes = if routes.is_none() {
-            HashMap::new()
-        } else {
-            routes.unwrap()
-        };
-        Self { routes: routes }
-    }
-
-    pub fn add_route(&mut self, route: String, handler: impl Handler + 'static) {
-        self.routes
-            .insert(route, Arc::new(Mutex::new(Box::new(handler))));
-    }
-
-    pub async fn get_handler(&self, route: String) -> Arc<Mutex<Box<dyn Handler>>> {
-        if let Some(handler) = self.routes.get(&route) {
-            let handler = handler;
-            handler.to_owned()
-        } else {
-            Arc::new(Mutex::new(Box::new(NotFound {})))
-        }
     }
 }
 
