@@ -1,8 +1,6 @@
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 
 use crate::models::packet::{OED, OKE, OSC};
-use crate::models::render::BaseResponse;
 
 use crate::exceptions::OblivionException;
 
@@ -16,7 +14,7 @@ use p256::PublicKey;
 use serde_json::from_slice;
 use tokio::net::TcpListener;
 
-use super::router::Router;
+use super::router::{Route, Router};
 
 pub struct ServerConnection {
     private_key: EphemeralSecret,
@@ -80,25 +78,14 @@ impl ServerConnection {
     }
 }
 
-pub trait Handler {
-    fn handle(&mut self, request: &mut OblivionRequest) -> BaseResponse;
-}
-
-pub struct NotFound;
-
-impl Handler for NotFound {
-    fn handle(&mut self, _: &mut OblivionRequest) -> BaseResponse {
-        BaseResponse::TextResponse("404 Not Found".to_owned(), 404)
-    }
-}
-
 pub async fn response(
-    handler: Arc<Mutex<Box<dyn Handler>>>,
+    route: &mut Route,
     stream: &mut Socket,
     request: &mut OblivionRequest,
     aes_key: Vec<u8>,
 ) -> Result<i32, OblivionException> {
-    let mut callback = handler.clone().lock().unwrap().handle(request);
+    let handler = route.get_handler();
+    let mut callback = handler(request);
 
     let mut oed = OED::new(Some(aes_key)).from_bytes(callback.as_bytes()?)?;
     oed.to_stream(stream, 5).await?;
@@ -106,6 +93,55 @@ pub async fn response(
     let mut osc = OSC::from_int(callback.get_status_code()?)?;
     osc.to_stream(stream).await;
     Ok(callback.get_status_code()?)
+}
+
+async fn _handle(
+    routes: &mut Router,
+    stream: &mut Socket,
+    peer: SocketAddr,
+) -> Result<(OblivionRequest, i32), OblivionException> {
+    stream.set_ttl(20);
+    let mut connection = ServerConnection::new()?;
+    let mut request = match connection.solve(stream, peer).await {
+        Ok(requset) => requset,
+        Err(_) => return Err(OblivionException::ServerError(None, 500)),
+    };
+
+    let mut route = routes.get_handler(request.get_olps()).await;
+    let status_code = match response(
+        &mut route,
+        stream,
+        &mut request,
+        connection.aes_key.unwrap(),
+    )
+    .await
+    {
+        Ok(status_code) => status_code,
+        Err(_) => return Err(OblivionException::ServerError(None, 501)),
+    };
+
+    Ok((request.to_owned(), status_code))
+}
+
+pub async fn handle(routes: Router, stream: Socket, peer: SocketAddr) {
+    let mut stream = stream;
+    let mut routes = routes;
+    match _handle(&mut routes, &mut stream, peer).await {
+        Ok((mut request, status_code)) => {
+            println!(
+                "{}/{} {} From {} {} {}",
+                request.get_protocol(),
+                request.get_version(),
+                request.get_method(),
+                request.get_ip(),
+                request.get_olps(),
+                status_code
+            );
+        }
+        Err(error) => {
+            println!("{}", error);
+        }
+    }
 }
 
 pub struct Server {
@@ -123,47 +159,6 @@ impl Server {
         }
     }
 
-    async fn _handle(
-        &mut self,
-        stream: &mut Socket,
-        peer: SocketAddr,
-    ) -> Result<(OblivionRequest, i32), OblivionException> {
-        stream.set_ttl(20);
-        let mut connection = ServerConnection::new()?;
-        let mut request = match connection.solve(stream, peer).await {
-            Ok(requset) => requset,
-            Err(_) => return Err(OblivionException::ServerError(None, 500)),
-        };
-
-        let handler = self.routes.get_handler(request.get_olps()).await;
-        let status_code =
-            match response(handler, stream, &mut request, connection.aes_key.unwrap()).await {
-                Ok(status_code) => status_code,
-                Err(_) => return Err(OblivionException::ServerError(None, 501)),
-            };
-
-        Ok((request.to_owned(), status_code))
-    }
-
-    pub async fn handle(&mut self, stream: &mut Socket, peer: SocketAddr) {
-        match self._handle(stream, peer).await {
-            Ok((mut request, status_code)) => {
-                println!(
-                    "{}/{} {} From {} {} {}",
-                    request.get_protocol(),
-                    request.get_version(),
-                    request.get_method(),
-                    request.get_ip(),
-                    request.get_olps(),
-                    status_code
-                );
-            }
-            Err(error) => {
-                println!("{}", error);
-            }
-        }
-    }
-
     pub async fn run(&mut self) {
         println!("Performing system checks...\n");
 
@@ -175,10 +170,10 @@ impl Server {
         println!("Quit the server by CTRL-BREAK.");
 
         while let Ok((socket, peer)) = tcp.accept().await {
-            let mut stream = Socket::new(socket);
-            let future = self.handle(&mut stream, peer).await;
-            future
-            // tokio::spawn(future);
+            let stream = Socket::new(socket);
+            let routes = self.routes.clone();
+            let future = handle(routes, stream, peer);
+            tokio::spawn(future);
         }
     }
 }
