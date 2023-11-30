@@ -16,29 +16,19 @@ fn not_found(request: &mut OblivionRequest) -> BaseResponse {
 
 #[derive(Clone)]
 pub struct Route {
-    // path: String,
     handler: fn(&mut OblivionRequest) -> BaseResponse,
 }
 
 impl Route {
-    // pub fn new(path: String, handler: fn(&mut OblivionRequest) -> BaseResponse) -> Self {
     pub fn new(handler: fn(&mut OblivionRequest) -> BaseResponse) -> Self {
-        Self {
-            // path: path,
-            handler: handler,
-        }
+        Self { handler: handler }
     }
 
     pub fn clone(&mut self) -> Self {
         Self {
-            // path: self.path.clone(),
             handler: self.handler.clone(),
         }
     }
-
-    // pub fn get_path(&mut self) -> String {
-    //     self.path.clone()
-    // }
 
     pub fn get_handler(&mut self) -> fn(&mut OblivionRequest) -> BaseResponse {
         self.handler.clone()
@@ -60,20 +50,15 @@ impl Router {
         Self { routes: routes }
     }
 
-    pub fn route(&mut self, path: String, handler: fn(&mut OblivionRequest) -> BaseResponse) {
-        self.routes.insert(
-            path.clone(),
-            Route {
-                // path: path,
-                handler: handler,
-            },
-        );
+    pub fn route(&mut self, path: &str, handler: fn(&mut OblivionRequest) -> BaseResponse) {
+        self.routes
+            .insert(path.to_owned(), Route { handler: handler });
     }
 
-    // pub fn regist(&mut self, route: Route) {
-    //     let mut route = route;
-    //     self.routes.insert(route.get_path(), route);
-    // }
+    pub fn regist(&mut self, path: &str, route: Route) {
+        let route = route;
+        self.routes.insert(path.to_owned(), route);
+    }
 
     pub async fn get_handler(&self, path: String) -> Route {
         let maybe_a_handler = self.routes.get(&path);
@@ -85,14 +70,13 @@ impl Router {
     }
 }
 
-// #[macro_export]
-// macro_rules! route {
-//     ($path:expr => $handler:ident) => {{
-//         let path = $path;
-//         let handler = $handler;
-//         $crate::models::router::Route {
-//             // path: path.to_string(),
-//             handler: handler,
-//         }
-//     }};
-// }
+#[macro_export]
+macro_rules! route {
+    ($router:expr, $path:expr => $handler:ident) => {{
+        let mut router = $router;
+        let path = $path;
+        let handler = $handler;
+        let route = $crate::models::router::Route::new(handler);
+        router.regist(path, route);
+    }};
+}

@@ -96,7 +96,7 @@ pub async fn response(
 }
 
 async fn _handle(
-    routes: &mut Router,
+    router: &mut Router,
     stream: &mut Socket,
     peer: SocketAddr,
 ) -> Result<(OblivionRequest, i32), OblivionException> {
@@ -107,7 +107,7 @@ async fn _handle(
         Err(_) => return Err(OblivionException::ServerError(None, 500)),
     };
 
-    let mut route = routes.get_handler(request.get_olps()).await;
+    let mut route = router.get_handler(request.get_olps()).await;
     let status_code = match response(
         &mut route,
         stream,
@@ -123,10 +123,10 @@ async fn _handle(
     Ok((request.to_owned(), status_code))
 }
 
-pub async fn handle(routes: Router, stream: Socket, peer: SocketAddr) {
+pub async fn handle(router: Router, stream: Socket, peer: SocketAddr) {
     let mut stream = stream;
-    let mut routes = routes;
-    match _handle(&mut routes, &mut stream, peer).await {
+    let mut router = router;
+    match _handle(&mut router, &mut stream, peer).await {
         Ok((mut request, status_code)) => {
             println!(
                 "{}/{} {} From {} {} {}",
@@ -147,15 +147,15 @@ pub async fn handle(routes: Router, stream: Socket, peer: SocketAddr) {
 pub struct Server {
     host: String,
     port: i32,
-    routes: Router,
+    router: Router,
 }
 
 impl Server {
-    pub fn new(host: &str, port: i32, routes: Router) -> Self {
+    pub fn new(host: &str, port: i32, router: Router) -> Self {
         Self {
             host: host.to_string(),
             port,
-            routes,
+            router,
         }
     }
 
@@ -171,8 +171,8 @@ impl Server {
 
         while let Ok((socket, peer)) = tcp.accept().await {
             let stream = Socket::new(socket);
-            let routes = self.routes.clone();
-            let future = handle(routes, stream, peer);
+            let router = self.router.clone();
+            let future = handle(router, stream, peer);
             tokio::spawn(future);
         }
     }

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use oblivion::models::render::BaseResponse;
 use oblivion::models::router::Router;
 use oblivion::models::server::Server;
+use oblivion::route;
 use oblivion::utils::parser::OblivionRequest;
 
 fn test2(_: &mut OblivionRequest) -> BaseResponse {
@@ -11,10 +12,12 @@ fn test2(_: &mut OblivionRequest) -> BaseResponse {
 
 #[tokio::main]
 async fn main() {
-    let mut routes = Router::new(Some(HashMap::new()));
+    let mut router = Router::new(Some(HashMap::new()));
     // routes.regist(route!("/test2" => test2));
-    routes.route("/test2".to_string(), test2);
 
-    let mut server = Server::new("127.0.0.1", 813, routes);
+    router.route("/test2", test2);
+    route!(&mut router, "/path" => test2);
+
+    let mut server = Server::new("127.0.0.1", 813, router);
     server.run().await;
 }
