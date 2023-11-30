@@ -12,7 +12,7 @@ use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
 
 use serde_json::from_slice;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 
 use super::router::{Route, Router};
 
@@ -123,8 +123,8 @@ async fn _handle(
     Ok((request.to_owned(), status_code))
 }
 
-pub async fn handle(router: Router, stream: Socket, peer: SocketAddr) {
-    let mut stream = stream;
+pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
+    let mut stream = Socket::new(stream);
     let mut router = router;
     match _handle(&mut router, &mut stream, peer).await {
         Ok((mut request, status_code)) => {
@@ -169,11 +169,9 @@ impl Server {
         println!("Starting server at Oblivion://{}:{}/", self.host, self.port);
         println!("Quit the server by CTRL-BREAK.");
 
-        while let Ok((socket, peer)) = tcp.accept().await {
-            let stream = Socket::new(socket);
+        while let Ok((stream, peer)) = tcp.accept().await {
             let router = self.router.clone();
-            let future = handle(router, stream, peer);
-            tokio::spawn(future);
+            tokio::spawn(handle(router, stream, peer));
         }
     }
 }
