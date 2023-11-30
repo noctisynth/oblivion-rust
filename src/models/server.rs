@@ -162,9 +162,18 @@ impl Server {
     pub async fn run(&mut self) {
         println!("Performing system checks...\n");
 
-        let tcp = TcpListener::bind(format!("{}:{}", self.host, self.port))
-            .await
-            .unwrap();
+        let tcp = match TcpListener::bind(format!("{}:{}", self.host, self.port)).await {
+            Ok(tcp) => tcp,
+            Err(_) => {
+                println!(
+                    "{}",
+                    OblivionException::AddressAlreadyInUse(
+                        format!("Address {}:{} already in use.", self.host, self.port).into()
+                    )
+                );
+                return ();
+            }
+        };
 
         println!("Starting server at Oblivion://{}:{}/", self.host, self.port);
         println!("Quit the server by CTRL-BREAK.");
