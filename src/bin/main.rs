@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-
+use oblivion::api::get;
 use oblivion::models::render::BaseResponse;
 use oblivion::models::router::Router;
 use oblivion::models::server::Server;
 use oblivion::route;
 use oblivion::utils::parser::OblivionRequest;
+use std::collections::HashMap;
+use std::env::args;
+use std::time::Instant;
 
 fn test2(_: &mut OblivionRequest) -> BaseResponse {
     BaseResponse::TextResponse("毁灭人类!!!!".to_string(), 200)
@@ -12,12 +14,21 @@ fn test2(_: &mut OblivionRequest) -> BaseResponse {
 
 #[tokio::main]
 async fn main() {
-    let mut router = Router::new(Some(HashMap::new()));
-    // routes.regist(route!("/test2" => test2));
+    let args: Vec<String> = args().collect();
+    let is_server = if args.len() == 1 { true } else { false };
+    if !is_server {
+        loop {
+            let now = Instant::now();
+            get("127.0.0.1:813/path", true).await.unwrap();
+            println!("执行时间: {}", now.elapsed().as_millis());
+        }
+    } else {
+        let mut router = Router::new(Some(HashMap::new()));
 
-    router.route("/test2", test2);
-    route!(&mut router, "/path" => test2);
+        router.route("/test2", test2);
+        route!(&mut router, "/path" => test2);
 
-    let mut server = Server::new("127.0.0.1", 813, router);
-    server.run().await;
+        let mut server = Server::new("127.0.0.1", 813, router);
+        server.run().await;
+    }
 }
