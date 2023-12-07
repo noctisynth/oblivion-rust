@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./static/favicon.png" alt="未知访客" width="200" height="200"></img>
+    <img src="./static/favicon.png" alt="Oblivion" width="200" height="200"></img>
 </div>
 
 <div align="center">
@@ -26,8 +26,8 @@ use oblivion::api::post;
 use oblivion::api::put;
 use oblivion::api::forward; // 弃用
 
-let req = get("127.0.0.1:813/path", true).await.unwrap(); //  返回一个Response结构体
-println!("{}", req.text()); // 输出GET内容
+let req = get("127.0.0.1:813/test1", true).await?; //  返回一个Response结构体
+println!("{}", req.text()?); // 输出GET内容
 ```
 
 ### 结构体
@@ -74,8 +74,12 @@ use oblivion::models::server;
 use oblivion::models::render;
 use oblivion::models::router;
 
-fn test(_: &mut OblivionRequest) -> BaseResponse {
-    BaseResponse::TextResponse("每一个自然人都应该拥有守护信息与获得真实信息的神圣权利".to_string(), 200)
+fn test2(_: &mut OblivionRequest) -> BaseResponse {
+    BaseResponse::TextResponse(
+        "每一个人都应该拥有守护信息与获得真实信息的神圣权利, 任何与之对抗的都是我们的敌人"
+            .to_string(),
+        200,
+    )
 }
 
 // 创建空的初始化路由

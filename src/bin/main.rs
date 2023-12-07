@@ -9,7 +9,11 @@ use std::env::args;
 use std::time::Instant;
 
 fn test2(_: &mut OblivionRequest) -> BaseResponse {
-    BaseResponse::TextResponse("毁灭人类!!!!".to_string(), 200)
+    BaseResponse::TextResponse(
+        "每一个人都应该拥有守护信息与获得真实信息的神圣权利, 任何与之对抗的都是我们的敌人"
+            .to_string(),
+        200,
+    )
 }
 
 #[tokio::main]

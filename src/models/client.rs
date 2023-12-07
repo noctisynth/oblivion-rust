@@ -39,12 +39,25 @@ impl Response {
         self.status_code < 400
     }
 
-    pub fn text(&mut self) -> String {
-        String::from_utf8(self.content.to_vec()).expect("Unable to decode.")
+    pub fn text(&mut self) -> Result<String, OblivionException> {
+        match String::from_utf8(self.content.to_vec()) {
+            Ok(text) => Ok(text),
+            Err(_) => Err(OblivionException::InvalidOblivion(Some(
+                "Decode error occured when decode text from uft8.".to_string(),
+            ))),
+        }
     }
 
-    pub fn json(&mut self) -> Result<Value, serde_json::Error> {
-        from_str::<Value>(&to_string(&self.content)?)
+    pub fn json(&mut self) -> Result<Value, OblivionException> {
+        Ok(from_str::<Value>(match &to_string(&self.content) {
+            Ok(string) => string,
+            Err(_) => {
+                return Err(OblivionException::InvalidOblivion(Some(
+                    "Decode error occured when serialize bytes as json.".to_string(),
+                )))
+            }
+        })
+        .unwrap())
     }
 }
 
