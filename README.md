@@ -65,14 +65,26 @@ impl Response {
 use oblivion::models::server;
 use oblivion::models::render;
 use oblivion::models::router;
+```
+
+### 示例
+
+```rust
+use oblivion::models::server;
+use oblivion::models::render;
+use oblivion::models::router;
+
+fn test(_: &mut OblivionRequest) -> BaseResponse {
+    BaseResponse::TextResponse("每一个自然人都应该拥有守护信息与获得真实信息的神圣权利".to_string(), 200)
+}
 
 // 创建空的初始化路由
-let mut router = Router::new(Some(HashMap::new()));
+let mut router = router::Router::new(Some(HashMap::new()));
 
 // 注册路由
 // 以下两种方案是等效的
-router.route("/test1", test2);
-route!(&mut router, "/test2" => test2);
+router.route("/test1", test);
+route!(&mut router, "/test2" => test);
 
 // 创建服务器
 let mut server = server::Server::new("127.0.0.1", 813, router);
