@@ -7,7 +7,7 @@ pub enum OblivionException {
     ConnectionRefusedError(Option<String>),
     InvalidOblivion(Option<String>),
     AddressAlreadyInUse(Option<String>),
-    UnexceptedDisconnection(Option<String>),
+    UnexpectedDisconnection(Option<String>),
     BadBytes(Option<String>),
     ConnectTimedOut(Option<String>),
     DataTooLarge(Option<String>),
@@ -48,7 +48,7 @@ impl core::fmt::Display for OblivionException {
             Self::AddressAlreadyInUse(info) => {
                 OblivionException::write_error(f, "AddressAlreadyInUse", info)
             }
-            Self::UnexceptedDisconnection(info) => {
+            Self::UnexpectedDisconnection(info) => {
                 OblivionException::write_error(f, "UnexceptedDisconnection", info)
             }
             Self::BadBytes(info) => OblivionException::write_error(f, "BadBytes", info),
