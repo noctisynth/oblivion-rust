@@ -4,6 +4,15 @@ use crate::{exceptions::OblivionException, models::client::Response};
 
 use super::sessions::Session;
 
+/// 裸 Oblivion 请求模式
+/// 
+/// ```rust
+/// use oblivion::api::request;
+/// 
+/// async fn run() {
+///     request("get", "127.0.0.1:813/get", None, None, true).await.unwrap();
+/// } 
+/// ```
 pub async fn request(
     method: &str,
     olps: &str,
