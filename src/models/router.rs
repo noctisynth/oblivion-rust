@@ -46,7 +46,7 @@ impl Router {
     ) -> Self {
         self.routes
             .insert(path.to_owned(), Route { handler: handler });
-        self.clone()
+        self.to_owned()
     }
 
     pub fn regist(&mut self, path: &str, route: Route) {
