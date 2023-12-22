@@ -43,9 +43,10 @@ impl Router {
         &mut self,
         path: &str,
         handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>,
-    ) {
+    ) -> Self {
         self.routes
             .insert(path.to_owned(), Route { handler: handler });
+        self.clone()
     }
 
     pub fn regist(&mut self, path: &str, route: Route) {
