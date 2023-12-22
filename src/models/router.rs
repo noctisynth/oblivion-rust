@@ -1,26 +1,16 @@
-use std::collections::HashMap;
-
-use crate::utils::parser::OblivionRequest;
-
+use super::handler::not_found;
 use super::render::BaseResponse;
-
-fn not_found(request: &mut OblivionRequest) -> BaseResponse {
-    BaseResponse::TextResponse(
-        format!(
-            "Path {} is not found, error with code 404.",
-            request.get_olps()
-        ),
-        404,
-    )
-}
+use crate::utils::parser::OblivionRequest;
+use futures::future::BoxFuture;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Route {
-    handler: fn(&mut OblivionRequest) -> BaseResponse,
+    handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>,
 }
 
 impl Route {
-    pub fn new(handler: fn(&mut OblivionRequest) -> BaseResponse) -> Self {
+    pub fn new(handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>) -> Self {
         Self { handler: handler }
     }
 
@@ -30,7 +20,7 @@ impl Route {
         }
     }
 
-    pub fn get_handler(&mut self) -> fn(&mut OblivionRequest) -> BaseResponse {
+    pub fn get_handler(&mut self) -> fn(OblivionRequest) -> BoxFuture<'static, BaseResponse> {
         self.handler.clone()
     }
 }
@@ -38,19 +28,22 @@ impl Route {
 #[derive(Clone)]
 pub struct Router {
     routes: HashMap<String, Route>,
+    // not_found_route: Route,
 }
 
 impl Router {
-    pub fn new(routes: Option<HashMap<String, Route>>) -> Self {
-        let routes = if routes.is_none() {
-            HashMap::new()
-        } else {
-            routes.unwrap()
-        };
-        Self { routes: routes }
+    pub fn new() -> Self {
+        Self {
+            routes: HashMap::new(),
+            // not_found_route: Route { handler: not_found },
+        }
     }
 
-    pub fn route(&mut self, path: &str, handler: fn(&mut OblivionRequest) -> BaseResponse) {
+    pub fn route(
+        &mut self,
+        path: &str,
+        handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>,
+    ) {
         self.routes
             .insert(path.to_owned(), Route { handler: handler });
     }

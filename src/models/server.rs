@@ -81,11 +81,11 @@ impl ServerConnection {
 pub async fn response(
     route: &mut Route,
     stream: &mut Socket,
-    request: &mut OblivionRequest,
+    request: OblivionRequest,
     aes_key: Vec<u8>,
 ) -> Result<i32, OblivionException> {
     let handler = route.get_handler();
-    let mut callback = handler(request);
+    let mut callback = handler(request).await;
 
     let mut oed = OED::new(Some(aes_key)).from_bytes(callback.as_bytes()?)?;
     oed.to_stream(stream, 5).await?;
@@ -111,7 +111,7 @@ async fn _handle(
     let status_code = match response(
         &mut route,
         stream,
-        &mut request,
+        request.clone(),
         connection.aes_key.unwrap(),
     )
     .await

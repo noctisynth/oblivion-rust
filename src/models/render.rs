@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::exceptions::OblivionException;
 
+#[derive(Clone)]
 pub enum BaseResponse {
     FileResponse(String, i32),
     TextResponse(String, i32),
