@@ -107,7 +107,7 @@ async fn _handle(
         Err(_) => return Err(OblivionException::ServerError(None, 500)),
     };
 
-    let mut route = router.get_handler(request.get_olps()).await;
+    let mut route = router.get_handler(request.get_olps());
     let status_code = match response(
         &mut route,
         stream,

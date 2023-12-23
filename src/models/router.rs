@@ -2,6 +2,7 @@ use super::handler::not_found;
 use super::render::BaseResponse;
 use crate::utils::parser::OblivionRequest;
 use futures::future::BoxFuture;
+use regex::Regex;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -25,23 +26,54 @@ impl Route {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum RouteType {
+    Path,
+    StartswithPath,
+    RegexPath,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct RoutePath {
+    route: String,
+    route_type: RouteType,
+}
+
+impl RoutePath {
+    pub fn new(route: &str, route_type: RouteType) -> Self {
+        Self {
+            route: route.trim_end_matches("/").to_string(),
+            route_type: route_type,
+        }
+    }
+
+    pub fn check(&mut self, olps: String) -> bool {
+        if self.route_type == RouteType::RegexPath {
+            let regex = Regex::new(&self.route).unwrap();
+            regex.is_match(&olps)
+        } else if self.route_type == RouteType::StartswithPath {
+            olps.starts_with(&self.route)
+        } else {
+            self.route == olps.trim_end_matches("/")
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Router {
-    routes: HashMap<String, Route>,
-    // not_found_route: Route,
+    routes: HashMap<RoutePath, Route>,
 }
 
 impl Router {
     pub fn new() -> Self {
         Self {
             routes: HashMap::new(),
-            // not_found_route: Route { handler: not_found },
         }
     }
 
     pub fn route(
         &mut self,
-        path: &str,
+        path: RoutePath,
         handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>,
     ) -> Self {
         self.routes
@@ -49,28 +81,18 @@ impl Router {
         self.to_owned()
     }
 
-    pub fn regist(&mut self, path: &str, route: Route) {
+    pub fn regist(&mut self, path: RoutePath, route: Route) {
         let route = route;
         self.routes.insert(path.to_owned(), route);
     }
 
-    pub async fn get_handler(&self, path: String) -> Route {
-        let maybe_a_handler = self.routes.get(&path);
-        if maybe_a_handler.is_none() {
-            Route::new(not_found)
-        } else {
-            maybe_a_handler.unwrap().clone()
+    pub fn get_handler(&self, path: String) -> Route {
+        for (route_path, route) in &self.routes {
+            let mut route_path = route_path.clone();
+            if route_path.check(path.clone()) {
+                return route.clone();
+            };
         }
+        Route::new(not_found)
     }
-}
-
-#[macro_export]
-macro_rules! route {
-    ($router:expr, $path:expr => $handler:ident) => {{
-        let mut router = $router;
-        let path = $path;
-        let handler = $handler;
-        let route = $crate::models::router::Route::new(handler);
-        router.regist(path, route);
-    }};
 }

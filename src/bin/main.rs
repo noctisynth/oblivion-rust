@@ -1,9 +1,9 @@
 use futures::future::{BoxFuture, FutureExt};
 use oblivion::api::get;
 use oblivion::models::render::BaseResponse;
-use oblivion::models::router::Router;
+use oblivion::models::router::{RoutePath, RouteType, Router};
 use oblivion::models::server::Server;
-use oblivion::route;
+use oblivion::path_route;
 use oblivion::utils::parser::OblivionRequest;
 use oblivion_codegen::async_route;
 use std::env::args;
@@ -39,8 +39,9 @@ async fn main() {
     } else {
         let mut router = Router::new();
 
-        router.route("/handler", handler);
-        route!(&mut router, "/welcome" => welcome);
+        router.route(RoutePath::new("/handler", RouteType::Path), handler);
+
+        path_route!(&mut router, "/welcome" => welcome);
 
         let mut server = Server::new("127.0.0.1", 813, router);
         server.run().await;
