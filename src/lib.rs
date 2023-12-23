@@ -3,13 +3,16 @@
 //! Oblivion 是浊莲为确保信息安全而开发的端到端加密协议，这是 Oblivion 的 Rust 实现。
 //! 它在 Python 实现的基础上大大提高了 Oblivion 的安全性、稳定性和并发性。
 //!
-//! 由于 Oblivion 协议中要求的加密算法为 ECDHE 算法，它以高效安全密钥派生方法，使得它
-//! 可以应用于信息派发和及时通讯。
+//! 由于 Oblivion 协议中要求的加密算法为 ECDHE 算法，它以高效安全密钥派生方法，使得它可以应用于信息派发和及时通讯。
 pub extern crate oblivion_codegen;
 pub extern crate proc_macro;
 pub mod api;
 pub mod exceptions;
 pub mod sessions;
+
+/// # Oblivion 工具类
+///
+/// Oblivion 的工具类提供了密钥创建，数据加密解密与请求解析处理方法。
 pub mod utils {
     pub mod decryptor;
     pub mod encryptor;
@@ -17,6 +20,10 @@ pub mod utils {
     pub mod generator;
     pub mod parser;
 }
+
+/// # Oblivion 模型
+///
+/// Oblivion 提供了所有前后端模型，包括数据包构建以及客户端和服务端的构建。
 pub mod models {
     pub mod client;
     pub mod handler;

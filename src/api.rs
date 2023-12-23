@@ -1,3 +1,6 @@
+//! # Oblivion API 接口
+//!
+//! Oblivion 提供了直接进行 GET、POST、PUT 等请求的方法。
 use serde_json::Value;
 
 use crate::{exceptions::OblivionException, models::client::Response};
@@ -5,13 +8,13 @@ use crate::{exceptions::OblivionException, models::client::Response};
 use super::sessions::Session;
 
 /// 裸 Oblivion 请求模式
-/// 
+///
 /// ```rust
 /// use oblivion::api::request;
-/// 
+///
 /// async fn run() {
 ///     request("get", "127.0.0.1:813/get", None, None, true).await.unwrap();
-/// } 
+/// }
 /// ```
 pub async fn request(
     method: &str,

@@ -1,3 +1,4 @@
+//! # Oblivion 窗口
 use serde_json::Value;
 
 use crate::{
@@ -5,6 +6,9 @@ use crate::{
     models::client::{Request, Response},
 };
 
+/// ## Oblivion 窗口抽象类
+///
+/// 用于连接模型创建请求窗口。
 pub struct Session;
 
 impl Session {

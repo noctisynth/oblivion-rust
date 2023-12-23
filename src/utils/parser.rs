@@ -1,3 +1,6 @@
+//! # Oblivion 解析器
+//!
+//! 用于对数据进行解析重构并存储。
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -6,6 +9,21 @@ use crate::exceptions::OblivionException;
 use regex::Regex;
 use serde_json::Value;
 
+/// 数据包大小分析函数
+///
+/// `length`接受一个`Vec<u8>`的字节流，得到其不多于四位数的数据大小，如果数据超出预计范围，它将抛出一个异常。
+///
+/// 它最终返回的值是一个`Vec<u8>`，它由一个四位数以字符串转换而来。
+///
+/// ```rust
+/// use oblivion::utils::parser::length;
+///
+/// let vec = b"fw4rg45245ygergeqwrgqwerg342rg342gjisdu".to_vec();
+///
+/// assert_eq!(b"0039".to_vec(), length(&vec).unwrap());
+/// ```
+///
+/// 以上示例中的`vec`是一个长度为 39 的`Vec<u8>`，`length(&vec)`得到了`b"0039".to_vec()`。
 pub fn length(bytes: &Vec<u8>) -> Result<Vec<u8>, OblivionException> {
     let str_num = bytes.len().to_string();
     if str_num.len() == 4 {
@@ -141,7 +159,9 @@ pub struct OblivionRequest {
 impl OblivionRequest {
     pub fn new(header: &str) -> Result<Self, OblivionException> {
         let plain_text = header;
-        let re = Regex::new(r"(?P<method>\w+) (?P<olps>\S+) (?P<protocol>\w+)/(?P<version>\d+\.\d+)").unwrap();
+        let re =
+            Regex::new(r"(?P<method>\w+) (?P<olps>\S+) (?P<protocol>\w+)/(?P<version>\d+\.\d+)")
+                .unwrap();
 
         if let Some(captures) = re.captures(header) {
             let mut extracted_values: HashMap<&str, Option<&str>> = HashMap::new();
