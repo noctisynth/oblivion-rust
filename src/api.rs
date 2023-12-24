@@ -33,12 +33,8 @@ pub async fn get(olps: &str, tfo: bool) -> Result<Response, OblivionException> {
     request("get", olps, None, None, tfo).await
 }
 
-pub async fn post(
-    olps: &str,
-    data: Option<Value>,
-    tfo: bool,
-) -> Result<Response, OblivionException> {
-    request("post", olps, data, None, tfo).await
+pub async fn post(olps: &str, data: Value, tfo: bool) -> Result<Response, OblivionException> {
+    request("post", olps, Some(data), None, tfo).await
 }
 
 pub async fn put(

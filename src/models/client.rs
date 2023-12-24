@@ -21,10 +21,10 @@ pub struct Response {
 impl Response {
     pub fn new(header: String, content: Vec<u8>, olps: String, status_code: i32) -> Self {
         Self {
-            header: header,
-            content: content,
-            olps: olps,
-            status_code: status_code,
+            header,
+            content,
+            olps,
+            status_code,
         }
     }
 
@@ -90,13 +90,13 @@ impl Request {
         let oblivion = Oblivion::new(&method, &olps)?;
         let plain_text = oblivion.plain_text();
         Ok(Self {
-            method: method,
-            olps: olps,
-            path: path,
-            data: data,
-            file: file,
-            tfo: tfo,
-            plain_text: plain_text,
+            method,
+            olps,
+            path,
+            data,
+            file,
+            tfo,
+            plain_text,
             prepared: false,
             private_key: None,
             public_key: None,
@@ -130,10 +130,7 @@ impl Request {
 
         self.send_header().await?;
 
-        let mut oke = OKE::new(
-            Some(&self.private_key.as_ref().unwrap()),
-            self.public_key.clone(),
-        )?;
+        let mut oke = OKE::new(Some(&self.private_key.as_ref().unwrap()), self.public_key)?;
         let mut oke = oke
             .from_stream_with_salt(self.tcp.as_mut().unwrap())
             .await?;
@@ -161,32 +158,33 @@ impl Request {
         let mut oed = if self.method == "POST" {
             let oed = if self.data.is_none() {
                 let mut oed = OED::new(self.aes_key.clone());
-                let oed = oed.from_dict(json!({}));
+                oed.from_dict(json!({}))?;
                 oed
             } else {
                 let mut oed = OED::new(self.aes_key.clone());
-                let oed = oed.from_dict(self.data.clone().unwrap());
+                oed.from_dict(self.data.clone().unwrap())?;
                 oed
             };
             oed
         } else if self.method == "PUT" {
             let mut oed = if self.data.is_none() {
                 let mut oed = OED::new(self.aes_key.clone());
-                let oed = oed.from_dict(json!({}))?;
+                oed.from_dict(json!({}))?;
                 oed
             } else {
                 let mut oed = OED::new(self.aes_key.clone());
-                let oed = oed.from_dict(self.data.clone().unwrap())?;
+                oed.from_dict(self.data.clone().unwrap())?;
                 oed
             };
+
             oed.to_stream(tcp, 5).await?;
 
             let mut oed = OED::new(self.aes_key.clone());
-            let oed = oed.from_bytes(self.file.clone().unwrap());
+            oed.from_bytes(self.file.clone().unwrap())?;
             oed
         } else {
-            Err(OblivionException::UnsupportedMethod(None))
-        }?;
+            return Err(OblivionException::UnsupportedMethod(None));
+        };
 
         oed.to_stream(tcp, 5).await?;
         Ok(())
@@ -199,7 +197,7 @@ impl Request {
             Err(OblivionException::ErrorNotPrepared(None))
         } else {
             let mut oed = OED::new(self.aes_key.clone());
-            let mut oed = oed.from_stream(tcp, 5).await?;
+            oed.from_stream(tcp, 5).await?;
 
             let mut osc = OSC::from_stream(tcp).await?;
 
@@ -214,6 +212,6 @@ impl Request {
     }
 
     pub fn is_prepared(&mut self) -> bool {
-        self.prepared.clone()
+        self.prepared
     }
 }

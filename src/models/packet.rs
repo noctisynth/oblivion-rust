@@ -72,7 +72,7 @@ impl OSC {
     }
 
     pub fn get_status_code(&mut self) -> i32 {
-        self.status_code.clone()
+        self.status_code
     }
 }
 
@@ -102,11 +102,11 @@ impl<'a> OKE<'a> {
 
     fn clone(&mut self) -> Self {
         Self {
-            length: self.length.clone(),
+            length: self.length,
             public_key: self.public_key,
             private_key: self.private_key,
             salt: self.salt.clone(),
-            remote_public_key: self.remote_public_key.clone(),
+            remote_public_key: self.remote_public_key,
             shared_aes_key: self.shared_aes_key.clone(),
         }
     }
@@ -122,7 +122,8 @@ impl<'a> OKE<'a> {
     pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<OKE<'a>, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
-        self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
+        self.remote_public_key =
+            Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.as_ref().unwrap(),
             self.remote_public_key.unwrap(),
@@ -137,7 +138,8 @@ impl<'a> OKE<'a> {
     ) -> Result<OKE<'a>, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
-        self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
+        self.remote_public_key =
+            Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         let salt_length = stream.recv_len().await?;
         self.salt = Some(stream.recv(salt_length).await);
         self.shared_aes_key = Some(generate_shared_key(
@@ -165,7 +167,7 @@ impl<'a> OKE<'a> {
     }
 
     pub fn plain_salt(&mut self) -> Vec<u8> {
-        let salt_bytes = self.salt.clone().unwrap();
+        let salt_bytes = self.salt.as_ref().unwrap();
         let mut plain_salt_bytes = length(&salt_bytes).unwrap();
         plain_salt_bytes.extend(salt_bytes);
         plain_salt_bytes
@@ -177,7 +179,6 @@ impl<'a> OKE<'a> {
 }
 
 pub struct OED {
-    length: Option<i32>,
     aes_key: Option<Vec<u8>>,
     data: Option<Vec<u8>>,
     encrypted_data: Option<Vec<u8>>,
@@ -189,25 +190,12 @@ pub struct OED {
 impl OED {
     pub fn new(aes_key: Option<Vec<u8>>) -> Self {
         Self {
-            length: None,
             aes_key: aes_key,
             data: None,
             encrypted_data: None,
             tag: None,
             nonce: None,
             chunk_size: 0,
-        }
-    }
-
-    fn clone(&mut self) -> Self {
-        Self {
-            length: self.length.clone(),
-            aes_key: self.aes_key.clone(),
-            data: self.data.clone(),
-            encrypted_data: self.encrypted_data.clone(),
-            tag: self.tag.clone(),
-            nonce: self.nonce.clone(),
-            chunk_size: self.chunk_size.clone(),
         }
     }
 
@@ -245,39 +233,39 @@ impl OED {
         serialized_bytes
     }
 
-    pub fn from_json_or_string(&mut self, json_or_str: String) -> Result<Self, ()> {
+    pub fn from_json_or_string(&mut self, json_or_str: String) -> Result<&mut Self, ()> {
         let (encrypted_data, tag, nonce) =
-            encrypt_message(json_or_str, &self.aes_key.clone().unwrap());
+            encrypt_message(json_or_str, &self.aes_key.as_ref().unwrap());
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
-        Ok(self.clone())
+        Ok(self)
     }
 
-    pub fn from_dict(&mut self, dict: Value) -> Result<Self, OblivionException> {
+    pub fn from_dict(&mut self, dict: Value) -> Result<&mut Self, OblivionException> {
         let (encrypted_data, tag, nonce) =
-            encrypt_message(dict.to_string(), &self.aes_key.clone().unwrap());
+            encrypt_message(dict.to_string(), &self.aes_key.as_ref().unwrap());
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
-        Ok(self.clone())
+        Ok(self)
     }
 
-    pub fn from_encrypted_data(&mut self, data: Vec<u8>) -> Result<Self, ()> {
+    pub fn from_encrypted_data(&mut self, data: Vec<u8>) -> Result<&mut Self, ()> {
         self.encrypted_data = Some(data);
-        Ok(self.clone())
+        Ok(self)
     }
 
-    pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<Self, OblivionException> {
-        let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key.clone().unwrap());
+    pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, OblivionException> {
+        let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key.as_ref().unwrap());
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
-        Ok(self.clone())
+        Ok(self)
     }
 
     pub async fn from_stream(
         &mut self,
         stream: &mut Socket,
         total_attemps: i32,
-    ) -> Result<Self, OblivionException> {
+    ) -> Result<&mut Self, OblivionException> {
         let mut attemp = 0;
         let mut ack = false;
 
@@ -297,7 +285,7 @@ impl OED {
             loop {
                 let prefix = stream.recv_len().await?;
                 if prefix == 0 {
-                    self.encrypted_data = Some(encrypted_data.clone());
+                    self.encrypted_data = Some(encrypted_data);
                     break;
                 }
 
@@ -338,7 +326,7 @@ impl OED {
             ))));
         }
 
-        Ok(self.clone())
+        Ok(self)
     }
 
     pub async fn to_stream(
@@ -357,7 +345,7 @@ impl OED {
 
             self.chunk_size = 0;
             for bytes in self
-                .serialize_bytes(&self.encrypted_data.clone().unwrap(), None)
+                .serialize_bytes(&self.encrypted_data.as_ref().unwrap(), None)
                 .iter()
             {
                 stream.send(&bytes).await;
@@ -382,11 +370,11 @@ impl OED {
     }
 
     pub fn plain_data(&mut self) -> Vec<u8> {
-        let nonce_bytes = self.nonce.clone().unwrap();
-        let tag_bytes = self.tag.clone().unwrap();
+        let nonce_bytes = self.nonce.as_ref().unwrap();
+        let tag_bytes = self.tag.as_ref().unwrap();
 
-        let mut plain_bytes = length(&nonce_bytes).unwrap();
-        plain_bytes.extend(length(&tag_bytes).unwrap());
+        let mut plain_bytes = length(nonce_bytes).unwrap();
+        plain_bytes.extend(length(tag_bytes).unwrap());
         plain_bytes.extend(nonce_bytes);
         plain_bytes.extend(tag_bytes);
 

@@ -1,4 +1,4 @@
-use crate::exceptions;
+use crate::exceptions::OblivionException;
 use ring::{
     aead::{Nonce, NonceSequence},
     error::Unspecified,
@@ -13,7 +13,6 @@ pub struct RandNonceSequence {
 }
 
 impl NonceSequence for RandNonceSequence {
-    // called once for each seal operation
     fn advance(&mut self) -> Result<Nonce, Unspecified> {
         Nonce::try_assume_unique_for_key(&self.nonce)
     }
@@ -38,7 +37,7 @@ impl Socket {
         self.tcp.set_ttl(ttl).unwrap()
     }
 
-    pub async fn recv_len(&mut self) -> Result<usize, exceptions::OblivionException> {
+    pub async fn recv_len(&mut self) -> Result<usize, OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; 4];
         let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
 
@@ -51,7 +50,7 @@ impl Socket {
         Ok(len)
     }
 
-    pub async fn recv_int(&mut self, len: usize) -> Result<i32, exceptions::OblivionException> {
+    pub async fn recv_int(&mut self, len: usize) -> Result<i32, OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; len];
         let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
 
@@ -69,7 +68,7 @@ impl Socket {
         recv_bytes
     }
 
-    pub async fn recv_str(&mut self, len: usize) -> Result<String, exceptions::OblivionException> {
+    pub async fn recv_str(&mut self, len: usize) -> Result<String, OblivionException> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
         let _ = self.tcp.read_exact(&mut recv_bytes).await.unwrap();
 
