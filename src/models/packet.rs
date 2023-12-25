@@ -77,7 +77,6 @@ impl OSC {
 }
 
 pub struct OKE<'a> {
-    length: Option<i32>,
     public_key: Option<PublicKey>,
     private_key: Option<&'a EphemeralSecret>,
     salt: Option<Vec<u8>>,
@@ -91,35 +90,26 @@ impl<'a> OKE<'a> {
         public_key: Option<PublicKey>,
     ) -> Result<Self, OblivionException> {
         Ok(Self {
-            length: None,
-            public_key: public_key,
-            private_key: private_key,
+            public_key,
+            private_key,
             salt: Some(generate_random_salt()),
             remote_public_key: None,
             shared_aes_key: None,
         })
     }
 
-    fn clone(&mut self) -> Self {
-        Self {
-            length: self.length,
-            public_key: self.public_key,
-            private_key: self.private_key,
-            salt: self.salt.clone(),
-            remote_public_key: self.remote_public_key,
-            shared_aes_key: self.shared_aes_key.clone(),
-        }
-    }
-
     pub fn from_public_key_bytes(
         &mut self,
         public_key_bytes: &[u8],
-    ) -> Result<Self, OblivionException> {
+    ) -> Result<&mut Self, OblivionException> {
         self.public_key = Some(PublicKey::from_sec1_bytes(public_key_bytes).unwrap());
-        Ok(self.clone())
+        Ok(self)
     }
 
-    pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<OKE<'a>, OblivionException> {
+    pub async fn from_stream(
+        &mut self,
+        stream: &mut Socket,
+    ) -> Result<&mut Self, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
         self.remote_public_key =
@@ -129,13 +119,13 @@ impl<'a> OKE<'a> {
             self.remote_public_key.unwrap(),
             &self.salt.as_mut().unwrap(),
         ));
-        Ok(self.clone())
+        Ok(self)
     }
 
     pub async fn from_stream_with_salt(
         &mut self,
         stream: &mut Socket,
-    ) -> Result<OKE<'a>, OblivionException> {
+    ) -> Result<&mut Self, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
         self.remote_public_key =
@@ -147,7 +137,7 @@ impl<'a> OKE<'a> {
             self.remote_public_key.unwrap(),
             &self.salt.as_mut().unwrap(),
         ));
-        Ok(self.clone())
+        Ok(self)
     }
 
     pub async fn to_stream(&mut self, stream: &mut Socket) {
@@ -300,9 +290,9 @@ impl OED {
 
             match decrypt_bytes(
                 self.encrypted_data.clone().unwrap(),
-                &self.tag.as_ref().unwrap(),
-                &self.aes_key.as_ref().unwrap(),
-                &self.nonce.as_ref().unwrap(),
+                self.tag.as_ref().unwrap(),
+                self.aes_key.as_ref().unwrap(),
+                self.nonce.as_ref().unwrap(),
             ) {
                 Ok(data) => {
                     self.data = Some(data);

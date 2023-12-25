@@ -45,7 +45,7 @@ impl ServerConnection {
 
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
         oke.to_stream_with_salt(stream).await;
-        let mut oke = oke.from_stream(stream).await?;
+        oke.from_stream(stream).await?;
         self.aes_key = Some(oke.get_aes_key());
 
         if request.get_method() == "POST" {

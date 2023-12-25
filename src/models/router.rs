@@ -76,8 +76,7 @@ impl Router {
         path: RoutePath,
         handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>,
     ) -> &mut Self {
-        self.routes
-            .insert(path.clone(), Route { handler: handler });
+        self.routes.insert(path.clone(), Route { handler: handler });
         self
     }
 

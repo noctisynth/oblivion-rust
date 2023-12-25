@@ -131,8 +131,7 @@ impl Request {
         self.send_header().await?;
 
         let mut oke = OKE::new(Some(&self.private_key.as_ref().unwrap()), self.public_key)?;
-        let mut oke = oke
-            .from_stream_with_salt(self.tcp.as_mut().unwrap())
+        oke.from_stream_with_salt(self.tcp.as_mut().unwrap())
             .await?;
         self.aes_key = Some(oke.get_aes_key());
         oke.to_stream(self.tcp.as_mut().unwrap()).await;
