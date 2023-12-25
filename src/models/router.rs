@@ -75,15 +75,14 @@ impl Router {
         &mut self,
         path: RoutePath,
         handler: fn(OblivionRequest) -> BoxFuture<'static, BaseResponse>,
-    ) -> Self {
-        self.routes
-            .insert(path.to_owned(), Route { handler: handler });
-        self.to_owned()
+    ) -> &mut Self {
+        self.routes.insert(path.clone(), Route { handler: handler });
+        self
     }
 
     pub fn regist(&mut self, path: RoutePath, route: Route) {
         let route = route;
-        self.routes.insert(path.to_owned(), route);
+        self.routes.insert(path.clone(), route);
     }
 
     pub fn get_handler(&self, path: String) -> Route {

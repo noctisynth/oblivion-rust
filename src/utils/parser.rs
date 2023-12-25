@@ -210,21 +210,6 @@ impl OblivionRequest {
         }
     }
 
-    pub fn clone(&mut self) -> Self {
-        Self {
-            method: self.method.clone(),
-            olps: self.olps.clone(),
-            protocol: self.protocol.clone(),
-            version: self.version.clone(),
-            data: self.data.clone(),
-            plain_text: self.plain_text.clone(),
-            post: self.post.clone(),
-            put: self.put.clone(),
-            remote_addr: self.remote_addr.clone(),
-            remote_port: self.remote_port.clone(),
-        }
-    }
-
     pub fn set_remote_peer(&mut self, peer: SocketAddr) {
         self.remote_addr = Some(peer.ip().to_string());
         self.remote_port = Some(peer.port().into())

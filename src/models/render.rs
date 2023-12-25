@@ -29,7 +29,7 @@ impl TextResponse {
     }
 
     pub fn get_status_code(&mut self) -> i32 {
-        self.status_code.clone()
+        self.status_code
     }
 }
 
@@ -51,7 +51,7 @@ impl JsonResponse {
     }
 
     pub fn get_status_code(&mut self) -> i32 {
-        self.status_code.clone()
+        self.status_code
     }
 }
 

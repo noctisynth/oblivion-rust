@@ -45,21 +45,21 @@ impl ServerConnection {
 
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
         oke.to_stream_with_salt(stream).await;
-        let mut oke = oke.from_stream(stream).await?;
+        oke.from_stream(stream).await?;
         self.aes_key = Some(oke.get_aes_key());
 
         if request.get_method() == "POST" {
             let mut oed = OED::new(self.aes_key.clone());
-            let mut oed = oed.from_stream(stream, 5).await?;
+            oed.from_stream(stream, 5).await?;
             request.set_post(from_slice(&oed.get_data()).unwrap());
         } else if request.get_method() == "GET" {
         } else if request.get_method() == "PUT" {
             let mut oed = OED::new(self.aes_key.clone());
-            let mut oed = oed.from_stream(stream, 5).await?;
+            oed.from_stream(stream, 5).await?;
             request.set_post(from_slice(&oed.get_data()).unwrap());
 
             let mut oed = OED::new(self.aes_key.clone());
-            let mut oed = oed.from_stream(stream, 5).await?;
+            oed.from_stream(stream, 5).await?;
             request.set_put(oed.get_data());
         } else {
             return Err(OblivionException::UnsupportedMethod(Some(
@@ -87,7 +87,8 @@ pub async fn response(
     let handler = route.get_handler();
     let mut callback = handler(request).await;
 
-    let mut oed = OED::new(Some(aes_key)).from_bytes(callback.as_bytes()?)?;
+    let mut oed = OED::new(Some(aes_key));
+    oed.from_bytes(callback.as_bytes()?)?;
     oed.to_stream(stream, 5).await?;
 
     let mut osc = OSC::from_int(callback.get_status_code()?)?;
@@ -120,7 +121,7 @@ async fn _handle(
         Err(_) => return Err(OblivionException::ServerError(None, 501)),
     };
 
-    Ok((request.to_owned(), status_code))
+    Ok((request.clone(), status_code))
 }
 
 pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
