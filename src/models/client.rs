@@ -8,7 +8,7 @@ use crate::utils::parser::{length, Oblivion, OblivionPath};
 
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
-use serde_json::{from_str, json, to_string, Value};
+use serde_json::{from_str, json, Value};
 use tokio::net::TcpStream;
 
 pub struct Response {
@@ -49,15 +49,7 @@ impl Response {
     }
 
     pub fn json(&mut self) -> Result<Value, OblivionException> {
-        Ok(from_str::<Value>(match &to_string(&self.content) {
-            Ok(string) => string,
-            Err(_) => {
-                return Err(OblivionException::InvalidOblivion(Some(
-                    "Decode error occured when serialize bytes as json.".to_string(),
-                )))
-            }
-        })
-        .unwrap())
+        Ok(from_str::<Value>(&self.text()?).unwrap())
     }
 }
 
