@@ -6,6 +6,7 @@ use oblivion::models::server::Server;
 use oblivion::path_route;
 use oblivion::utils::parser::OblivionRequest;
 use oblivion_codegen::async_route;
+use serde_json::json;
 use std::env::args;
 use std::time::Instant;
 
@@ -26,6 +27,14 @@ fn welcome(mut req: OblivionRequest) -> BaseResponse {
     )
 }
 
+#[async_route]
+fn json(_req: OblivionRequest) -> BaseResponse {
+    BaseResponse::JsonResponse(
+        json!({"status": true, "msg": "只身堕入极暗之永夜, 以期再世涅槃之阳光"}),
+        200,
+    )
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = args().collect();
@@ -42,6 +51,7 @@ async fn main() {
         router.route(RoutePath::new("/handler", RouteType::Path), handler);
 
         path_route!(&mut router, "/welcome" => welcome);
+        path_route!(&mut router, "/json" => json);
 
         let mut server = Server::new("127.0.0.1", 813, router);
         server.run().await;
