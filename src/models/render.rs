@@ -58,7 +58,9 @@ impl JsonResponse {
 impl BaseResponse {
     pub fn as_bytes(&mut self) -> Result<Vec<u8>, OblivionException> {
         match self {
-            Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod(None)),
+            Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod {
+                method: "FileResponse".to_string(),
+            }),
             Self::TextResponse(text, status_code) => {
                 let mut tres = TextResponse::new(&text, *status_code)?;
                 Ok(tres.as_bytes())
@@ -72,7 +74,9 @@ impl BaseResponse {
 
     pub fn get_status_code(&mut self) -> Result<i32, OblivionException> {
         match self {
-            Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod(None)),
+            Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod {
+                method: "FileResponse".to_string(),
+            }),
             Self::TextResponse(text, status_code) => {
                 let mut tres = TextResponse::new(&text, *status_code)?;
                 Ok(tres.get_status_code())

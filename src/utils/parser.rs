@@ -3,7 +3,6 @@
 //! 用于对数据进行解析重构并存储。
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::str::FromStr;
 
 use crate::exceptions::OblivionException;
 use regex::Regex;
@@ -29,10 +28,7 @@ pub fn length(bytes: &Vec<u8>) -> Result<Vec<u8>, OblivionException> {
     if str_num.len() == 4 {
         return Ok(str_num.into_bytes());
     } else if str_num.len() >= 4 {
-        return Err(OblivionException::DataTooLarge(Some(format!(
-            "Data in {} exceed max data limit!",
-            bytes.len()
-        ))));
+        return Err(OblivionException::DataTooLarge { size: bytes.len() });
     }
 
     let mut list_num: Vec<char> = str_num.chars().collect();
@@ -53,7 +49,7 @@ pub struct OblivionPath {
 impl OblivionPath {
     pub fn new(obl_str: &str) -> Result<Self, OblivionException> {
         let re = Regex::new(
-            r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<url>/.+)?$",
+            r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<url>.+)?$",
         )
         .unwrap();
 
@@ -94,9 +90,9 @@ impl OblivionPath {
                 olps: url,
             })
         } else {
-            Err(OblivionException::InvalidOblivion(Some(
-                "Bad Olivion location path sequence found.".to_string(),
-            )))
+            Err(OblivionException::InvalidOblivion {
+                olps: obl_str.to_string(),
+            })
         }
     }
 
@@ -128,7 +124,7 @@ impl Oblivion {
         Ok(Self {
             method: method.to_string(),
             olps: olps.to_string(),
-            version: String::from_str("1.1").unwrap(),
+            version: "1.1".to_string(),
         })
     }
 
@@ -206,11 +202,13 @@ impl OblivionRequest {
                 remote_port: None,
             })
         } else {
-            Err(OblivionException::BadProtocol(Some(header.to_owned())))
+            Err(OblivionException::BadProtocol {
+                header: header.to_string(),
+            })
         }
     }
 
-    pub fn set_remote_peer(&mut self, peer: SocketAddr) {
+    pub fn set_remote_peer(&mut self, peer: &SocketAddr) {
         self.remote_addr = Some(peer.ip().to_string());
         self.remote_port = Some(peer.port().into())
     }

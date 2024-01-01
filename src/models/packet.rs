@@ -35,8 +35,9 @@ impl ACK {
         })
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) {
-        stream.send(&self.plain_data()).await;
+    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<(), OblivionException> {
+        stream.send(&self.plain_data()).await?;
+        Ok(())
     }
 
     pub fn plain_data(&mut self) -> Vec<u8> {
@@ -62,8 +63,9 @@ impl OSC {
         })
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) {
-        stream.send(&self.plain_data()).await;
+    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<(), OblivionException> {
+        stream.send(&self.plain_data()).await?;
+        Ok(())
     }
 
     pub fn plain_data(&mut self) -> Vec<u8> {
@@ -111,14 +113,14 @@ impl<'a> OKE<'a> {
         stream: &mut Socket,
     ) -> Result<&mut Self, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
-        let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
+        let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key =
             Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.as_ref().unwrap(),
-            self.remote_public_key.unwrap(),
+            self.remote_public_key.as_ref().unwrap(),
             &self.salt.as_mut().unwrap(),
-        ));
+        )?);
         Ok(self)
     }
 
@@ -127,26 +129,31 @@ impl<'a> OKE<'a> {
         stream: &mut Socket,
     ) -> Result<&mut Self, OblivionException> {
         let remote_public_key_length = stream.recv_len().await?;
-        let remote_public_key_bytes = stream.recv(remote_public_key_length).await;
+        let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key =
             Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes).unwrap());
         let salt_length = stream.recv_len().await?;
-        self.salt = Some(stream.recv(salt_length).await);
+        self.salt = Some(stream.recv(salt_length).await?);
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.as_ref().unwrap(),
-            self.remote_public_key.unwrap(),
+            self.remote_public_key.as_ref().unwrap(),
             &self.salt.as_mut().unwrap(),
-        ));
+        )?);
         Ok(self)
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) {
-        stream.send(&self.plain_data()).await;
+    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<(), OblivionException> {
+        stream.send(&self.plain_data()).await?;
+        Ok(())
     }
 
-    pub async fn to_stream_with_salt(&mut self, stream: &mut Socket) {
-        stream.send(&self.plain_data()).await;
-        stream.send(&self.plain_salt()).await;
+    pub async fn to_stream_with_salt(
+        &mut self,
+        stream: &mut Socket,
+    ) -> Result<(), OblivionException> {
+        stream.send(&self.plain_data()).await?;
+        stream.send(&self.plain_salt()).await?;
+        Ok(())
     }
 
     pub fn plain_data(&mut self) -> Vec<u8> {
@@ -266,8 +273,8 @@ impl OED {
             let len_nonce = stream.recv_len().await?;
             let len_tag = stream.recv_len().await?;
 
-            self.nonce = Some(stream.recv(len_nonce).await);
-            self.tag = Some(stream.recv(len_tag).await);
+            self.nonce = Some(stream.recv(len_nonce).await?);
+            self.tag = Some(stream.recv(len_tag).await?);
 
             let mut encrypted_data: Vec<u8> = Vec::new();
             self.chunk_size = 0;
@@ -281,7 +288,7 @@ impl OED {
 
                 let mut add: Vec<u8> = Vec::new();
                 while add.len() != prefix {
-                    add.extend(stream.recv(prefix - add.len()).await)
+                    add.extend(stream.recv(prefix - add.len()).await?)
                 }
 
                 encrypted_data.extend(add);
@@ -296,12 +303,12 @@ impl OED {
             ) {
                 Ok(data) => {
                     self.data = Some(data);
-                    stream.send(&ack_packet.plain_data()).await;
+                    stream.send(&ack_packet.plain_data()).await?;
                     ack = true;
                     break;
                 }
                 Err(error) => {
-                    stream.send(b"0000").await;
+                    stream.send(b"0000").await?;
                     println!("An error occured: {error}\nRetried {attemp} times.");
                     attemp += 1;
                     continue;
@@ -309,11 +316,10 @@ impl OED {
             }
         }
         if !ack {
-            stream.close().await;
-            return Err(OblivionException::AllAttemptsRetryFailed(Some(format!(
-                "All attempts failed after {} times retried receiving.",
-                total_attemps
-            ))));
+            stream.close().await?;
+            return Err(OblivionException::AllAttemptsRetryFailed {
+                times: total_attemps,
+            });
         }
 
         Ok(self)
@@ -329,31 +335,30 @@ impl OED {
 
         while attemp <= total_attemps {
             let mut ack_packet = ACK::new()?;
-            ack_packet.to_stream(stream).await;
+            ack_packet.to_stream(stream).await?;
 
-            stream.send(&self.plain_data()).await;
+            stream.send(&self.plain_data()).await?;
 
             self.chunk_size = 0;
             for bytes in self
                 .serialize_bytes(&self.encrypted_data.as_ref().unwrap(), None)
                 .iter()
             {
-                stream.send(&bytes).await;
+                stream.send(&bytes).await?;
                 self.chunk_size += 1;
             }
 
-            if ack_packet.sequence.as_bytes() == stream.recv(4).await {
+            if ack_packet.sequence.as_bytes() == stream.recv(4).await? {
                 ack = true;
                 break;
             }
         }
 
         if !ack {
-            stream.close().await;
-            return Err(OblivionException::AllAttemptsRetryFailed(Some(format!(
-                "All attempts failed after {} times retried sending.",
-                total_attemps
-            ))));
+            stream.close().await?;
+            return Err(OblivionException::AllAttemptsRetryFailed {
+                times: total_attemps,
+            });
         }
 
         Ok(())

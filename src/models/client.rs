@@ -42,9 +42,9 @@ impl Response {
     pub fn text(&mut self) -> Result<String, OblivionException> {
         match String::from_utf8(self.content.to_vec()) {
             Ok(text) => Ok(text),
-            Err(_) => Err(OblivionException::InvalidOblivion(Some(
-                "Decode error occured when decode text from uft8.".to_string(),
-            ))),
+            Err(_) => Err(OblivionException::InvalidOblivion {
+                olps: self.olps.to_string(),
+            }),
         }
     }
 
@@ -98,7 +98,7 @@ impl Request {
     }
 
     pub async fn prepare(&mut self) -> Result<(), OblivionException> {
-        let (private_key, public_key) = generate_key_pair();
+        let (private_key, public_key) = generate_key_pair()?;
         (self.private_key, self.public_key) = (Some(private_key), Some(public_key));
 
         let tcp =
@@ -109,11 +109,7 @@ impl Request {
                     tcp.set_ttl(20).unwrap();
                     tcp
                 }
-                Err(_) => {
-                    return Err(OblivionException::ConnectionRefusedError(Some(
-                        "向服务端的链接请求被拒绝, 可能是由于服务端遭到攻击.".to_string(),
-                    )))
-                }
+                Err(_) => return Err(OblivionException::ConnectionRefusedError),
             };
         self.tcp = Some(Socket::new(tcp));
 
@@ -126,7 +122,7 @@ impl Request {
         oke.from_stream_with_salt(self.tcp.as_mut().unwrap())
             .await?;
         self.aes_key = Some(oke.get_aes_key());
-        oke.to_stream(self.tcp.as_mut().unwrap()).await;
+        oke.to_stream(self.tcp.as_mut().unwrap()).await?;
 
         self.prepared = true;
         Ok(())
@@ -135,8 +131,8 @@ impl Request {
     pub async fn send_header(&mut self) -> Result<(), OblivionException> {
         let tcp = self.tcp.as_mut().unwrap();
         let header = self.plain_text.as_bytes().to_vec();
-        tcp.send(&length(&header)?).await;
-        tcp.send(&header).await;
+        tcp.send(&length(&header)?).await?;
+        tcp.send(&header).await?;
         Ok(())
     }
 
@@ -147,7 +143,7 @@ impl Request {
 
         let tcp = self.tcp.as_mut().unwrap();
         let mut oed = if self.method == "POST" {
-            let oed = if self.data.is_none() {
+            if self.data.is_none() {
                 let mut oed = OED::new(self.aes_key.clone());
                 oed.from_dict(json!({}))?;
                 oed
@@ -155,8 +151,7 @@ impl Request {
                 let mut oed = OED::new(self.aes_key.clone());
                 oed.from_dict(self.data.clone().unwrap())?;
                 oed
-            };
-            oed
+            }
         } else if self.method == "PUT" {
             let mut oed = if self.data.is_none() {
                 let mut oed = OED::new(self.aes_key.clone());
@@ -174,7 +169,9 @@ impl Request {
             oed.from_bytes(self.file.clone().unwrap())?;
             oed
         } else {
-            return Err(OblivionException::UnsupportedMethod(None));
+            return Err(OblivionException::UnsupportedMethod {
+                method: self.method.to_string(),
+            });
         };
 
         oed.to_stream(tcp, 5).await?;
@@ -185,7 +182,7 @@ impl Request {
         let tcp = self.tcp.as_mut().unwrap();
 
         if !self.prepared {
-            Err(OblivionException::ErrorNotPrepared(None))
+            Err(OblivionException::ErrorNotPrepared)
         } else {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(tcp, 5).await?;

@@ -24,7 +24,7 @@ pub struct ServerConnection {
 
 impl ServerConnection {
     pub fn new() -> Result<Self, OblivionException> {
-        let (private_key, public_key) = generate_key_pair();
+        let (private_key, public_key) = generate_key_pair()?;
 
         Ok(Self {
             private_key: private_key,
@@ -41,10 +41,10 @@ impl ServerConnection {
         let len_header = stream.recv_len().await?;
         let header = stream.recv_str(len_header).await?;
         let mut request = OblivionRequest::new(&header)?;
-        request.set_remote_peer(peer);
+        request.set_remote_peer(&peer);
 
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
-        oke.to_stream_with_salt(stream).await;
+        oke.to_stream_with_salt(stream).await?;
         oke.from_stream(stream).await?;
         self.aes_key = Some(oke.get_aes_key());
 
@@ -62,9 +62,9 @@ impl ServerConnection {
             oed.from_stream(stream, 5).await?;
             request.set_put(oed.get_data());
         } else {
-            return Err(OblivionException::UnsupportedMethod(Some(
-                request.get_method(),
-            )));
+            return Err(OblivionException::UnsupportedMethod {
+                method: request.get_method(),
+            });
         };
         Ok(request)
     }
@@ -92,7 +92,7 @@ pub async fn response(
     oed.to_stream(stream, 5).await?;
 
     let mut osc = OSC::from_int(callback.get_status_code()?)?;
-    osc.to_stream(stream).await;
+    osc.to_stream(stream).await?;
     Ok(callback.get_status_code()?)
 }
 
@@ -105,7 +105,14 @@ async fn _handle(
     let mut connection = ServerConnection::new()?;
     let mut request = match connection.solve(stream, peer).await {
         Ok(requset) => requset,
-        Err(_) => return Err(OblivionException::ServerError(None, 500)),
+        Err(_) => {
+            return Err(OblivionException::ServerError {
+                method: "CONNECT".to_string(),
+                ipaddr: peer.ip().to_string(),
+                olps: "-".to_string(),
+                status_code: 500,
+            })
+        }
     };
 
     let mut route = router.get_handler(request.get_olps());
@@ -118,7 +125,14 @@ async fn _handle(
     .await
     {
         Ok(status_code) => status_code,
-        Err(_) => return Err(OblivionException::ServerError(None, 501)),
+        Err(_) => {
+            return Err(OblivionException::ServerError {
+                method: request.get_method(),
+                ipaddr: request.get_ip(),
+                olps: request.get_olps(),
+                status_code: 501,
+            });
+        }
     };
 
     Ok((request.clone(), status_code))
@@ -168,9 +182,10 @@ impl Server {
             Err(_) => {
                 println!(
                     "{}",
-                    OblivionException::AddressAlreadyInUse(
-                        format!("Address {}:{} already in use.", self.host, self.port).into()
-                    )
+                    OblivionException::AddressAlreadyInUse {
+                        ipaddr: self.host.clone(),
+                        port: self.port
+                    }
                 );
                 return ();
             }

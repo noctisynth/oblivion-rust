@@ -39,12 +39,17 @@ impl Socket {
 
     pub async fn recv_len(&mut self) -> Result<usize, OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; 4];
-        let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
+        match self.tcp.read_exact(&mut len_bytes).await {
+            Ok(_) => {}
+            Err(_) => return Err(OblivionException::UnexpectedDisconnection),
+        };
 
-        let len_int: i32 = std::str::from_utf8(&len_bytes)
-            .unwrap()
-            .parse()
-            .expect("Failed to receieve length");
+        let len_int: i32 = match std::str::from_utf8(&len_bytes) {
+            Ok(len_int) => len_int,
+            Err(_) => return Err(OblivionException::BadBytes),
+        }
+        .parse()
+        .expect("Failed to receieve length");
 
         let len: usize = len_int.try_into().expect("Failed to generate unsize value");
         Ok(len)
@@ -52,38 +57,54 @@ impl Socket {
 
     pub async fn recv_int(&mut self, len: usize) -> Result<i32, OblivionException> {
         let mut len_bytes: Vec<u8> = vec![0; len];
-        let _ = self.tcp.read_exact(&mut len_bytes).await.unwrap();
+        match self.tcp.read_exact(&mut len_bytes).await {
+            Ok(_) => {}
+            Err(_) => return Err(OblivionException::UnexpectedDisconnection),
+        };
 
-        let int: i32 = std::str::from_utf8(&len_bytes)
-            .unwrap()
-            .parse()
-            .expect("Failed to receieve length");
+        let int: i32 = match std::str::from_utf8(&len_bytes) {
+            Ok(len_int) => len_int,
+            Err(_) => return Err(OblivionException::BadBytes),
+        }
+        .parse()
+        .expect("Failed to receieve length");
 
         Ok(int)
     }
 
-    pub async fn recv(&mut self, len: usize) -> Vec<u8> {
+    pub async fn recv(&mut self, len: usize) -> Result<Vec<u8>, OblivionException> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
-        let _ = self.tcp.read_exact(&mut recv_bytes).await.unwrap();
-        recv_bytes
+        match self.tcp.read_exact(&mut recv_bytes).await {
+            Ok(_) => {}
+            Err(_) => return Err(OblivionException::UnexpectedDisconnection),
+        };
+        Ok(recv_bytes)
     }
 
     pub async fn recv_str(&mut self, len: usize) -> Result<String, OblivionException> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
-        let _ = self.tcp.read_exact(&mut recv_bytes).await.unwrap();
+        match self.tcp.read_exact(&mut recv_bytes).await {
+            Ok(_) => {}
+            Err(_) => return Err(OblivionException::UnexpectedDisconnection),
+        };
 
-        let recv_str = String::from_utf8(recv_bytes.clone())
-            .unwrap()
-            .trim()
-            .to_string();
-        Ok(recv_str)
+        match String::from_utf8(recv_bytes) {
+            Ok(len_int) => Ok(len_int.trim().to_string()),
+            Err(_) => Err(OblivionException::BadBytes),
+        }
     }
 
-    pub async fn send(&mut self, data: &[u8]) {
-        let _ = self.tcp.write(data).await.unwrap();
+    pub async fn send(&mut self, data: &[u8]) -> Result<(), OblivionException> {
+        match self.tcp.write(data).await {
+            Ok(_) => Ok(()),
+            Err(_) => Err(OblivionException::UnexpectedDisconnection),
+        }
     }
 
-    pub async fn close(&mut self) {
-        let _ = self.tcp.shutdown().await.unwrap();
+    pub async fn close(&mut self) -> Result<(), OblivionException> {
+        match self.tcp.shutdown().await {
+            Ok(_) => Ok(()),
+            Err(_) => Err(OblivionException::UnexpectedDisconnection),
+        }
     }
 }
