@@ -6,13 +6,13 @@
 
 # Oblivion
 
-Rust 的 Oblivion 协议实现
+Rust High Concurrency Implementation of Oblivion, an End-to-End Encryption Protocol Based on ECDHE Encryption Algorithm
 
 </div>
 
-## 文档
+## Documentation
 
-使用以下指令创建 `Oblivion` 文档：
+You can use the following command to create `Oblivion` documents:
 
 ```bash
 cargo doc -r
