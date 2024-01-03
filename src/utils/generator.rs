@@ -9,14 +9,14 @@ use scrypt::{scrypt, Params};
 
 use crate::exceptions::OblivionException;
 
-/// 创建 ECC 密钥
+/// Create an ECC key
 ///
-/// `generate_key_pair`将创建一个`ECC`密钥。
+/// `generate_key_pair` will create an ECC key and return a (private key, public key) pair of `(EphemeralSecret, PublicKey)`.
 ///
 /// ```rust
 /// use oblivion::utils::generator::generate_key_pair;
 ///
-/// let (private_key, public_key) = generate_key_pair();
+/// let (private_key, public_key) = generate_key_pair().unwrap();
 /// ```
 pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), OblivionException> {
     let private_key = EphemeralSecret::random(&mut OsRng);
@@ -27,7 +27,16 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), OblivionExcep
     }
 }
 
-/// 创建 ECDH 共享密钥
+/// Create an ECDH Shared Key
+///
+/// ```rust
+/// use oblivion::utils::generator::{generate_key_pair, generate_shared_key, generate_random_salt};
+///
+/// let salt = generate_random_salt();
+/// let (private_key, public_key) = generate_key_pair().unwrap();
+///
+/// let shared_key = generate_shared_key(&private_key, &public_key, &salt).unwrap();
+/// ```
 pub fn generate_shared_key(
     private_key: &EphemeralSecret,
     public_key: &PublicKey,
@@ -46,7 +55,12 @@ pub fn generate_shared_key(
     }
 }
 
-/// 生成随机的盐值
+/// Generate a Randomized Salt
+/// ```rust
+/// use oblivion::utils::generator::generate_random_salt;
+///
+/// let salt = generate_random_salt();
+/// ```
 pub fn generate_random_salt() -> Vec<u8> {
     let rand = SystemRandom::new();
     let mut key_bytes = vec![0; AES_128_GCM.key_len()];

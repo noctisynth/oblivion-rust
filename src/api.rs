@@ -1,19 +1,22 @@
-//! # Oblivion API 接口
+//! # Oblivion API Interface
 //!
-//! Oblivion 提供了直接进行 GET、POST、PUT 等请求的方法。
+//! Oblivion provides methods for making direct GET, POST, PUT, etc. requests.
 use serde_json::Value;
 
 use crate::{exceptions::OblivionException, models::client::Response};
 
 use super::sessions::Session;
 
-/// 裸 Oblivion 请求模式
+/// Naked Oblivion Request Mode
 ///
 /// ```rust
 /// use oblivion::api::request;
+/// use oblivion::models::client::Response;
+/// use oblivion::exceptions::OblivionException;
 ///
-/// async fn run() {
-///     request("get", "127.0.0.1:813/get", None, None, true).await.unwrap();
+/// #[tokio::test]
+/// async fn run() -> Result<Response, OblivionException> {
+///     request("get", "127.0.0.1:813/get", None, None, true).await
 /// }
 /// ```
 pub async fn request(

@@ -3,7 +3,7 @@ use crate::utils::gear::Socket;
 use crate::exceptions::OblivionException;
 
 use super::super::utils::decryptor::decrypt_bytes;
-use super::super::utils::encryptor::{encrypt_bytes, encrypt_message};
+use super::super::utils::encryptor::{encrypt_bytes, encrypt_plaintext};
 use super::super::utils::generator::{generate_random_salt, generate_shared_key};
 use super::super::utils::parser::length;
 
@@ -46,7 +46,7 @@ impl ACK {
 }
 
 pub struct OSC {
-    status_code: i32,
+    pub status_code: i32,
 }
 
 impl OSC {
@@ -71,10 +71,6 @@ impl OSC {
     pub fn plain_data(&mut self) -> Vec<u8> {
         let status_code = format!("{}", self.status_code);
         status_code.into_bytes()
-    }
-
-    pub fn get_status_code(&mut self) -> i32 {
-        self.status_code
     }
 }
 
@@ -230,9 +226,12 @@ impl OED {
         serialized_bytes
     }
 
-    pub fn from_json_or_string(&mut self, json_or_str: String) -> Result<&mut Self, ()> {
+    pub fn from_json_or_string(
+        &mut self,
+        json_or_str: String,
+    ) -> Result<&mut Self, OblivionException> {
         let (encrypted_data, tag, nonce) =
-            encrypt_message(json_or_str, &self.aes_key.as_ref().unwrap());
+            encrypt_plaintext(json_or_str, &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
         Ok(self)
@@ -240,7 +239,7 @@ impl OED {
 
     pub fn from_dict(&mut self, dict: Value) -> Result<&mut Self, OblivionException> {
         let (encrypted_data, tag, nonce) =
-            encrypt_message(dict.to_string(), &self.aes_key.as_ref().unwrap());
+            encrypt_plaintext(dict.to_string(), &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
         Ok(self)
@@ -252,7 +251,7 @@ impl OED {
     }
 
     pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, OblivionException> {
-        let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key.as_ref().unwrap());
+        let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
         Ok(self)

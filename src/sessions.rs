@@ -6,9 +6,9 @@ use crate::{
     models::client::{Request, Response},
 };
 
-/// ## Oblivion 窗口抽象类
+/// ## Oblivion Abstract Session
 ///
-/// 用于连接模型创建请求窗口。
+/// Used to connect to the model and create a request session.
 pub struct Session;
 
 impl Session {
@@ -34,7 +34,6 @@ impl Session {
             let _ = request.prepare();
         }
 
-        // 发送请求
         request.send().await?;
         request.recv().await
     }

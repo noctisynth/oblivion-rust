@@ -1,5 +1,6 @@
 //! # Oblivion 异常
 //! 所有 Oblivion 函数的异常均返回`OblivionException`。
+use ring::error::Unspecified;
 use scrypt::errors::InvalidOutputLen;
 use thiserror::Error;
 
@@ -44,5 +45,12 @@ pub enum OblivionException {
         error: elliptic_curve::Error,
     },
     #[error("共享密钥生成时出现异常: {error:?}")]
-    InvalidOutputLen { error: InvalidOutputLen },
+    InvalidOutputLen {
+        #[from]
+        error: InvalidOutputLen,
+    },
+    #[error("加密时出现异常: {error:?}")]
+    EncryptError { error: Unspecified },
+    #[error("解密时出现异常: {error:?}")]
+    DecryptError { error: Unspecified },
 }
