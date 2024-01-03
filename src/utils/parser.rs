@@ -40,6 +40,18 @@ pub fn length(bytes: &Vec<u8>) -> Result<Vec<u8>, OblivionException> {
     Ok(list_num.into_iter().collect::<String>().into_bytes())
 }
 
+/// Oblivion Location Path String Parser
+///
+/// ```rust
+/// use oblivion::utils::parser::OblivionPath;
+///
+/// let olps = OblivionPath::new("oblivion://127.0.0.1:813/test").unwrap();
+///
+/// assert_eq!("oblivion".to_string(), olps.get_protocol());
+/// assert_eq!("127.0.0.1".to_string(), olps.get_host());
+/// assert_eq!("813".to_string(), olps.get_port());
+/// assert_eq!("/test".to_string(), olps.get_olps());
+/// ```
 pub struct OblivionPath {
     protocol: String,
     host: String,
@@ -50,7 +62,7 @@ pub struct OblivionPath {
 impl OblivionPath {
     pub fn new(obl_str: &str) -> Result<Self, OblivionException> {
         let re = Regex::new(
-            r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<url>.+)?$",
+            r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<olps>.+)?$",
         )
         .unwrap();
 
@@ -64,31 +76,27 @@ impl OblivionPath {
                 }
             }
 
-            let protocol = extracted_values
-                .get("protocol")
-                .unwrap_or(&None)
-                .unwrap_or_default()
-                .to_string();
-            let host = extracted_values
-                .get("host")
-                .unwrap_or(&None)
-                .unwrap_or_default()
-                .to_string();
-            let port = extracted_values
-                .get("port")
-                .unwrap_or(&Some("80"))
-                .unwrap_or_default()
-                .to_string();
-            let url = extracted_values
-                .get("url")
-                .unwrap_or(&Some("/"))
-                .unwrap_or_default()
-                .to_string();
+            let protocol = match extracted_values.get("protocol").unwrap() {
+                Some(result) => result.to_string(),
+                None => "oblivion".to_string(),
+            };
+            let host = match extracted_values.get("host").unwrap() {
+                Some(result) => result.to_string(),
+                None => "oblivion".to_string(),
+            };
+            let port = match extracted_values.get("port").unwrap() {
+                Some(result) => result.to_string(),
+                None => "80".to_string(),
+            };
+            let olps = match extracted_values.get("olps").unwrap() {
+                Some(result) => result.to_string(),
+                None => "/".to_string(),
+            };
             Ok(Self {
-                protocol: protocol,
-                host: host,
-                port: port,
-                olps: url,
+                protocol,
+                host,
+                port,
+                olps,
             })
         } else {
             Err(OblivionException::InvalidOblivion {
@@ -114,6 +122,13 @@ impl OblivionPath {
     }
 }
 
+/// Oblivion Request Header Generator
+///
+/// ```rust
+/// use oblivion::utils::parser::Oblivion;
+///
+/// assert_eq!(Oblivion::new("GET", "/test").plain_text().as_str(), "GET /test Oblivion/1.1");
+/// ```
 pub struct Oblivion {
     method: String,
     olps: String,
@@ -121,12 +136,12 @@ pub struct Oblivion {
 }
 
 impl Oblivion {
-    pub fn new(method: &str, olps: &str) -> Result<Self, OblivionException> {
-        Ok(Self {
+    pub fn new(method: &str, olps: &str) -> Self {
+        Self {
             method: method.to_string(),
             olps: olps.to_string(),
             version: "1.1".to_string(),
-        })
+        }
     }
 
     pub fn plain_text(&self) -> String {
@@ -139,6 +154,7 @@ impl Oblivion {
     }
 }
 
+/// Oblivion Request Header Parser
 #[derive(Clone, Debug, PartialEq)]
 pub struct OblivionRequest {
     pub(crate) method: String,

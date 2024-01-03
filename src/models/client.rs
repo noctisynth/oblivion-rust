@@ -79,7 +79,7 @@ impl Request {
         let method = method.to_uppercase();
         let path = OblivionPath::new(&olps)?;
         let olps = path.get_olps();
-        let oblivion = Oblivion::new(&method, &olps)?;
+        let oblivion = Oblivion::new(&method, &olps);
         let plain_text = oblivion.plain_text();
         Ok(Self {
             method,
@@ -188,13 +188,13 @@ impl Request {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(tcp, 5).await?;
 
-            let mut osc = OSC::from_stream(tcp).await?;
+            let osc = OSC::from_stream(tcp).await?;
 
             let response = Response::new(
                 self.plain_text.clone(),
                 oed.get_data(),
                 self.olps.clone(),
-                osc.get_status_code(),
+                osc.status_code,
             );
             Ok(response)
         }

@@ -46,7 +46,7 @@ impl ACK {
 }
 
 pub struct OSC {
-    status_code: i32,
+    pub status_code: i32,
 }
 
 impl OSC {
@@ -71,10 +71,6 @@ impl OSC {
     pub fn plain_data(&mut self) -> Vec<u8> {
         let status_code = format!("{}", self.status_code);
         status_code.into_bytes()
-    }
-
-    pub fn get_status_code(&mut self) -> i32 {
-        self.status_code
     }
 }
 
