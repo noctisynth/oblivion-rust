@@ -141,7 +141,7 @@ impl Oblivion {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OblivionRequest {
-    method: String,
+    pub(crate) method: String,
     olps: String,
     protocol: String,
     version: String,

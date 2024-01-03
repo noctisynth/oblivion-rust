@@ -27,8 +27,8 @@ impl ServerConnection {
         let (private_key, public_key) = generate_key_pair()?;
 
         Ok(Self {
-            private_key: private_key,
-            public_key: public_key,
+            private_key,
+            public_key,
             aes_key: None,
         })
     }
@@ -48,12 +48,12 @@ impl ServerConnection {
         oke.from_stream(stream).await?;
         self.aes_key = Some(oke.get_aes_key());
 
-        if request.get_method() == "POST" {
+        if request.method == "POST" {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(stream, 5).await?;
             request.set_post(from_slice(&oed.get_data()).unwrap());
-        } else if request.get_method() == "GET" {
-        } else if request.get_method() == "PUT" {
+        } else if request.method == "GET" {
+        } else if request.method == "PUT" {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(stream, 5).await?;
             request.set_post(from_slice(&oed.get_data()).unwrap());
@@ -63,7 +63,7 @@ impl ServerConnection {
             request.set_put(oed.get_data());
         } else {
             return Err(OblivionException::UnsupportedMethod {
-                method: request.get_method(),
+                method: request.method,
             });
         };
         Ok(request)
