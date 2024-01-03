@@ -1,18 +1,20 @@
 //! # Oblivion
 //!
-//! Oblivion 是浊莲为确保信息安全而开发的端到端加密协议，这是 Oblivion 的 Rust 实现。
-//! 它在 Python 实现的基础上大大提高了 Oblivion 的安全性、稳定性和并发性。
+//! Oblivion is a Rust implementation of Oblivion,an end-to-end encryption protocol developed by Turbolane to secure information.
+//! It greatly improves the security, stability, and concurrency of Oblivion based on the Python implementation.
 //!
-//! 由于 Oblivion 协议中要求的加密算法为 ECDHE 算法，它以高效安全密钥派生方法，使得它可以应用于信息派发和及时通讯。
+//! Since the encryption algorithm required in the Oblivion protocol is the ECDHE algorithm,
+//! it is based on an efficient and secure key derivation method,
+//! which makes it possible to apply it to message dispatching and just-in-time communication.
 pub extern crate oblivion_codegen;
 pub extern crate proc_macro;
 pub mod api;
 pub mod exceptions;
 pub mod sessions;
 
-/// # Oblivion 工具类
+/// # Oblivion Utilities
 ///
-/// Oblivion 的工具类提供了密钥创建，数据加密解密与请求解析处理方法。
+/// Oblivion utility classes provide key creation, data encryption and decryption, and request resolution processing methods.
 pub mod utils {
     pub mod decryptor;
     pub mod encryptor;
@@ -21,9 +23,9 @@ pub mod utils {
     pub mod parser;
 }
 
-/// # Oblivion 模型
+/// # Oblivion Models
 ///
-/// Oblivion 提供了所有前后端模型，包括数据包构建以及客户端和服务端的构建。
+/// Oblivion provides all front- and back-end models, including packet building as well as client-side and server-side building.
 pub mod models {
     pub mod client;
     pub mod handler;
@@ -33,9 +35,9 @@ pub mod models {
     pub mod server;
 }
 
-/// 绝对路由宏
+/// Absolute Routing Macros
 ///
-/// 使用路由宏可以简单的实现路由：
+/// Routing can be simply implemented using routing macros:
 ///
 /// ```rust
 /// use futures::future::{BoxFuture, FutureExt};
@@ -57,7 +59,7 @@ pub mod models {
 /// path_route!(&mut router, "/welcome" => welcome);
 /// ```
 ///
-/// 上面的路由将会引导路径为`/welcome`或`/welcome/`的请求。
+/// The above route will direct requests with the path `/welcome` or `/welcome/`.
 #[macro_export]
 macro_rules! path_route {
     ($router:expr, $path:expr => $handler:ident) => {{
@@ -70,9 +72,9 @@ macro_rules! path_route {
     }};
 }
 
-/// 起始路由宏
+/// Startswith Routing Macros
 ///
-/// 使用起始路由宏可以简单的实现起始路由：
+/// Starting routes can be simply implemented using the start route macro:
 ///
 /// ```rust
 /// use futures::future::{BoxFuture, FutureExt};
@@ -94,7 +96,7 @@ macro_rules! path_route {
 /// startswith_route!(&mut router, "/welcome" => welcome);
 /// ```
 ///
-/// 上面的路由将会引导所有以`/welcome`起始的 Oblivion Location Path String。
+/// The above route will direct all Oblivion Location Path String starting with `/welcome`.
 #[macro_export]
 macro_rules! startswith_route {
     ($router:expr, $path:expr => $handler:ident) => {{
@@ -110,9 +112,9 @@ macro_rules! startswith_route {
     }};
 }
 
-/// 正则路由宏
+/// Regular routing macro
 ///
-/// 使用正则路由宏可以简单的实现正则路由：
+/// Regular routing can be simply implemented using regular routing macros:
 ///
 /// ```rust
 /// use futures::future::{BoxFuture, FutureExt};
@@ -134,9 +136,9 @@ macro_rules! startswith_route {
 /// regex_route!(&mut router, r"^/welcome/.*" => welcome);
 /// ```
 ///
-/// 上面的路由将会引导所有以`/welcome/`起始的 Oblivion Location Path String。
+/// The above route will direct all Oblivion Location Path String starting with `/welcome/`.
 ///
-/// 你还可以使用`^/.*`来劫持所有路由。
+/// You can also use `^/. *` to hijack all routes.
 #[macro_export]
 macro_rules! regex_route {
     ($router:expr, $path:expr => $handler:ident) => {{

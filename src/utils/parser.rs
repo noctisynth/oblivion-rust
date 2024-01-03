@@ -1,6 +1,6 @@
-//! # Oblivion 解析器
+//! # Oblivion Parser
 //!
-//! 用于对数据进行解析重构并存储。
+//! Used to parse and reconstruct data and store it.
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -8,11 +8,12 @@ use crate::exceptions::OblivionException;
 use regex::Regex;
 use serde_json::Value;
 
-/// 数据包大小分析函数
+/// Packet size analysis function
 ///
-/// `length`接受一个`Vec<u8>`的字节流，得到其不多于四位数的数据大小，如果数据超出预计范围，它将抛出一个异常。
+/// `length` accepts a `Vec<u8>` byte stream, gets its data size in no more than four digits,
+/// and throws an exception if the data is out of the expected range.
 ///
-/// 它最终返回的值是一个`Vec<u8>`，它由一个四位数以字符串转换而来。
+/// The final value it returns is a `Vec<u8>`, which consists of a four-digit number converted to a string.
 ///
 /// ```rust
 /// use oblivion::utils::parser::length;
@@ -22,7 +23,7 @@ use serde_json::Value;
 /// assert_eq!(b"0039".to_vec(), length(&vec).unwrap());
 /// ```
 ///
-/// 以上示例中的`vec`是一个长度为 39 的`Vec<u8>`，`length(&vec)`得到了`b"0039".to_vec()`。
+/// The `vec` in the above example is a `Vec<u8>` of length 39, and `length(&vec)` gets `b "0039".to_vec()`.
 pub fn length(bytes: &Vec<u8>) -> Result<Vec<u8>, OblivionException> {
     let str_num = bytes.len().to_string();
     if str_num.len() == 4 {
