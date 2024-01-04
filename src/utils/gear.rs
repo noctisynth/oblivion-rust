@@ -1,3 +1,4 @@
+//! Oblivion Abstract Gear
 use crate::exceptions::OblivionException;
 use ring::{
     aead::{Nonce, NonceSequence},
@@ -8,22 +9,31 @@ use tokio::{
     net::TcpStream,
 };
 
-pub struct RandNonceSequence {
+/// Absolute Nonce Sequence Structure
+///
+/// This structure is used to pass in pre-generated Nonce directly.
+///
+/// Warning: this is not a generalized generation scheme and should not be used in production environments,
+/// you should make sure that the Nonce you pass in is a sufficiently garbled byte string.
+pub struct AbsoluteNonceSequence {
     nonce: Vec<u8>,
 }
 
-impl NonceSequence for RandNonceSequence {
+impl NonceSequence for AbsoluteNonceSequence {
     fn advance(&mut self) -> Result<Nonce, Unspecified> {
         Nonce::try_assume_unique_for_key(&self.nonce)
     }
 }
 
-impl RandNonceSequence {
+impl AbsoluteNonceSequence {
     pub fn new(nonce: Vec<u8>) -> Self {
         Self { nonce: nonce }
     }
 }
 
+/// Socket Abstract Structure
+///
+/// Used to abstract Oblivion's handling of transmitted data, wrapping all data type conversions.
 pub struct Socket {
     tcp: TcpStream,
 }
@@ -44,15 +54,13 @@ impl Socket {
             Err(_) => return Err(OblivionException::UnexpectedDisconnection),
         };
 
-        let len_int: i32 = match std::str::from_utf8(&len_bytes) {
-            Ok(len_int) => len_int,
+        match std::str::from_utf8(&len_bytes) {
+            Ok(len_int) => match len_int.parse() {
+                Ok(len) => Ok(len),
+                Err(_) => Err(OblivionException::BadBytes),
+            },
             Err(_) => return Err(OblivionException::BadBytes),
         }
-        .parse()
-        .expect("Failed to receieve length");
-
-        let len: usize = len_int.try_into().expect("Failed to generate unsize value");
-        Ok(len)
     }
 
     pub async fn recv_int(&mut self, len: usize) -> Result<i32, OblivionException> {
@@ -62,23 +70,21 @@ impl Socket {
             Err(_) => return Err(OblivionException::UnexpectedDisconnection),
         };
 
-        let int: i32 = match std::str::from_utf8(&len_bytes) {
-            Ok(len_int) => len_int,
+        match std::str::from_utf8(&len_bytes) {
+            Ok(len_int) => match len_int.parse() {
+                Ok(len) => Ok(len),
+                Err(_) => Err(OblivionException::BadBytes),
+            },
             Err(_) => return Err(OblivionException::BadBytes),
         }
-        .parse()
-        .expect("Failed to receieve length");
-
-        Ok(int)
     }
 
     pub async fn recv(&mut self, len: usize) -> Result<Vec<u8>, OblivionException> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
         match self.tcp.read_exact(&mut recv_bytes).await {
-            Ok(_) => {}
-            Err(_) => return Err(OblivionException::UnexpectedDisconnection),
-        };
-        Ok(recv_bytes)
+            Ok(_) => Ok(recv_bytes),
+            Err(_) => Err(OblivionException::UnexpectedDisconnection),
+        }
     }
 
     pub async fn recv_str(&mut self, len: usize) -> Result<String, OblivionException> {

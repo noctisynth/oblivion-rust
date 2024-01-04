@@ -11,11 +11,9 @@ use ring::rand::SystemRandom;
 
 use crate::exceptions::OblivionException;
 
-use super::gear::RandNonceSequence;
+use super::gear::AbsoluteNonceSequence;
 
 /// Encrypt plaintext using AES
-///
-/// `encrypt_messgae`是`encrypt_bytes`
 pub fn encrypt_plaintext(
     string: String,
     aes_key: &[u8],
@@ -38,7 +36,7 @@ pub fn encrypt_bytes(
     let rand = SystemRandom::new();
     rand.fill(&mut nonce_bytes).unwrap();
 
-    let nonce_sequence = RandNonceSequence::new(nonce_bytes.clone());
+    let nonce_sequence = AbsoluteNonceSequence::new(nonce_bytes.clone());
     let mut sealing_key = SealingKey::new(unbound_key, nonce_sequence);
 
     let associated_data = Aad::empty();
