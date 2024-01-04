@@ -1,3 +1,4 @@
+//! Oblivion Generator
 extern crate rand;
 extern crate ring;
 
