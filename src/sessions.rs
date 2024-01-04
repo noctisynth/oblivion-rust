@@ -1,4 +1,4 @@
-//! # Oblivion 窗口
+//! # Oblivion Sessions
 use serde_json::Value;
 
 use crate::{

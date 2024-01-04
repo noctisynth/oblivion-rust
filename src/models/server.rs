@@ -1,3 +1,4 @@
+//! Oblivion Server
 use std::net::SocketAddr;
 
 use crate::models::packet::{OED, OKE, OSC};

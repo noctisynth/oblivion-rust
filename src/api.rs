@@ -32,14 +32,17 @@ pub async fn request(
         .await
 }
 
+/// GET method
 pub async fn get(olps: &str, tfo: bool) -> Result<Response, OblivionException> {
     request("get", olps, None, None, tfo).await
 }
 
+/// POST method
 pub async fn post(olps: &str, data: Value, tfo: bool) -> Result<Response, OblivionException> {
     request("post", olps, Some(data), None, tfo).await
 }
 
+/// PUT method
 pub async fn put(
     olps: &str,
     data: Option<Value>,
@@ -49,6 +52,7 @@ pub async fn put(
     request("put", olps, data, Some(file), tfo).await
 }
 
+#[deprecated(since = "1.0.0", note = "FORWARD method may no longer supported.")]
 pub async fn forward(
     olps: &str,
     data: Option<Value>,

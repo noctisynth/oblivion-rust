@@ -114,7 +114,7 @@ impl Request {
         self.tcp = Some(Socket::new(tcp));
 
         if self.tfo {
-            todo!() // 在这里启用TCP Fast Open
+            // 在这里启用TCP Fast Open
         };
 
         self.send_header().await?;
