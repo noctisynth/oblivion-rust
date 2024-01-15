@@ -1,4 +1,4 @@
-//! Oblivion Packets Encapsulation
+//! # Oblivion Packets Encapsulation
 use crate::utils::gear::Socket;
 
 use crate::exceptions::OblivionException;

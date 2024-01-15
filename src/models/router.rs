@@ -1,4 +1,4 @@
-//! Oblivion Router
+//! # Oblivion Router
 use super::handler::not_found;
 use super::render::BaseResponse;
 use crate::utils::parser::OblivionRequest;

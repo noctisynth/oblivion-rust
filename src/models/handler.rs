@@ -1,4 +1,4 @@
-//! Oblivion Default Handler
+//! # Oblivion Default Handler
 use super::render::BaseResponse;
 use crate::utils::parser::OblivionRequest;
 use futures::future::{BoxFuture, FutureExt};

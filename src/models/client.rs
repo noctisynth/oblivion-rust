@@ -1,3 +1,4 @@
+//! # Oblivion Client
 use crate::models::packet::{OED, OKE, OSC};
 
 use crate::exceptions::OblivionException;
