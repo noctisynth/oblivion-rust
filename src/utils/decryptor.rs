@@ -1,3 +1,4 @@
+//! # Oblivion Decryptor
 use ring::aead::Aad;
 use ring::aead::BoundKey;
 use ring::aead::OpeningKey;

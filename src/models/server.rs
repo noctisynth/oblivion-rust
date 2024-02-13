@@ -1,4 +1,4 @@
-//! Oblivion Server
+//! # Oblivion Server
 use std::net::SocketAddr;
 
 use crate::models::packet::{OED, OKE, OSC};
@@ -17,6 +17,9 @@ use tokio::net::{TcpListener, TcpStream};
 
 use super::router::{Route, Router};
 
+/// Server Connection Solver
+///
+/// Handshake between server and client.
 pub struct ServerConnection {
     private_key: EphemeralSecret,
     public_key: PublicKey,
@@ -79,6 +82,9 @@ impl ServerConnection {
     }
 }
 
+/// Responser
+///
+/// Send response back to client requester.
 pub async fn response(
     route: &mut Route,
     stream: &mut Socket,
@@ -160,6 +166,7 @@ pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
     }
 }
 
+/// Server Core Struct
 pub struct Server {
     host: String,
     port: i32,

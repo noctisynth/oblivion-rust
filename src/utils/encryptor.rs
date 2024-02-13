@@ -1,3 +1,4 @@
+//! # Oblivion Encryptor
 extern crate ring;
 
 use ring::aead::Aad;
