@@ -50,6 +50,8 @@ impl ServerConnection {
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
         oke.to_stream_with_salt(stream).await?;
         oke.from_stream(stream).await?;
+
+        request.aes_key = Some(oke.get_aes_key());
         self.aes_key = Some(oke.get_aes_key());
 
         if request.method == "POST" {
@@ -122,7 +124,7 @@ async fn _handle(
         }
     };
 
-    let mut route = router.get_handler(request.get_olps());
+    let mut route = router.get_handler(&request.olps);
     let status_code = match response(
         &mut route,
         stream,
@@ -142,7 +144,7 @@ async fn _handle(
         }
     };
 
-    Ok((request.clone(), status_code))
+    Ok((request, status_code))
 }
 
 pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
@@ -160,9 +162,7 @@ pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
                 status_code
             );
         }
-        Err(error) => {
-            println!("{}", error);
-        }
+        Err(error) => println!("{}", error),
     }
 }
 

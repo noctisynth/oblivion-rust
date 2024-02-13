@@ -48,10 +48,10 @@ impl RoutePath {
         }
     }
 
-    pub fn check(&mut self, olps: String) -> bool {
+    pub fn check(&mut self, olps: &str) -> bool {
         if self.route_type == RouteType::RegexPath {
             let regex = Regex::new(&self.route).unwrap();
-            regex.is_match(&olps)
+            regex.is_match(olps)
         } else if self.route_type == RouteType::StartswithPath {
             olps.starts_with(&self.route)
         } else {
@@ -86,10 +86,10 @@ impl Router {
         self.routes.insert(path.clone(), route);
     }
 
-    pub fn get_handler(&self, path: String) -> Route {
+    pub fn get_handler(&self, path: &str) -> Route {
         for (route_path, route) in &self.routes {
             let mut route_path = route_path.clone();
-            if route_path.check(path.clone()) {
+            if route_path.check(path) {
                 return route.clone();
             };
         }

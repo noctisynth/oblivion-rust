@@ -158,7 +158,7 @@ impl Oblivion {
 #[derive(Clone, Debug, PartialEq)]
 pub struct OblivionRequest {
     pub(crate) method: String,
-    olps: String,
+    pub(crate) olps: String,
     protocol: String,
     version: String,
     data: Option<String>,
@@ -167,6 +167,7 @@ pub struct OblivionRequest {
     put: Option<Vec<u8>>,
     remote_addr: Option<String>,
     remote_port: Option<i32>,
+    pub(crate) aes_key: Option<Vec<u8>>,
 }
 
 impl OblivionRequest {
@@ -207,16 +208,17 @@ impl OblivionRequest {
                 .unwrap_or_default()
                 .to_string();
             Ok(Self {
-                method: method,
-                olps: olps,
-                protocol: protocol,
-                version: version,
+                method,
+                olps,
+                protocol,
+                version,
                 data: None,
                 plain_text: plain_text.to_owned(),
                 post: None,
                 put: None,
                 remote_addr: None,
                 remote_port: None,
+                aes_key: None,
             })
         } else {
             Err(OblivionException::BadProtocol {
