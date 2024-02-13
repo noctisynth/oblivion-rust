@@ -113,7 +113,7 @@ async fn _handle(
     stream.set_ttl(20);
     let mut connection = ServerConnection::new()?;
     let mut request = match connection.solve(stream, peer).await {
-        Ok(requset) => requset,
+        Ok(request) => request,
         Err(_) => {
             return Err(OblivionException::ServerError {
                 method: "CONNECT".to_string(),
