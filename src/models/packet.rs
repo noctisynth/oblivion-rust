@@ -1,12 +1,10 @@
 //! # Oblivion Packets Encapsulation
-use crate::utils::gear::Socket;
-
 use crate::exceptions::OblivionException;
-
-use super::super::utils::decryptor::decrypt_bytes;
-use super::super::utils::encryptor::{encrypt_bytes, encrypt_plaintext};
-use super::super::utils::generator::{generate_random_salt, generate_shared_key};
-use super::super::utils::parser::length;
+use crate::utils::decryptor::decrypt_bytes;
+use crate::utils::encryptor::{encrypt_bytes, encrypt_plaintext};
+use crate::utils::gear::Socket;
+use crate::utils::generator::{generate_random_salt, generate_shared_key};
+use crate::utils::parser::length;
 
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
