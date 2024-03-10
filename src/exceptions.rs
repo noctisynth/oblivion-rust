@@ -3,6 +3,8 @@
 use ring::error::Unspecified;
 use scrypt::errors::InvalidOutputLen;
 use thiserror::Error;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 /// ## Oblivion exception iterator
 /// Use an iterator as the type of exception returned by a function.
@@ -53,4 +55,19 @@ pub enum OblivionException {
     EncryptError { error: Unspecified },
     #[error("Exception while decrypting: {error:?}")]
     DecryptError { error: Unspecified },
+}
+
+#[cfg(feature = "python")]
+#[pyclass]
+pub struct PyOblivionException {
+    pub message: String,
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl PyOblivionException {
+    #[new]
+    fn new(message: String) -> Self {
+        Self { message }
+    }
 }
