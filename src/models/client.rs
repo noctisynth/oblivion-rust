@@ -9,16 +9,24 @@ use crate::utils::parser::{length, Oblivion, OblivionPath};
 
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
-use serde_json::{from_str, json, Value};
 use tokio::net::TcpStream;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(not(feature = "python"))]
+use serde_json::{from_str, json, Value};
+#[cfg(feature = "python")]
+use serde_json::{json, Value};
+
+#[cfg_attr(feature = "python", pyclass)]
 pub struct Response {
-    header: String,
-    content: Vec<u8>,
-    olps: String,
-    status_code: i32,
+    pub header: String,
+    pub content: Vec<u8>,
+    pub olps: String,
+    pub status_code: i32,
 }
 
+#[cfg(not(feature = "python"))]
 impl Response {
     pub fn new(header: String, content: Vec<u8>, olps: String, status_code: i32) -> Self {
         Self {
@@ -51,6 +59,49 @@ impl Response {
 
     pub fn json(&mut self) -> Result<Value, OblivionException> {
         Ok(from_str::<Value>(&self.text()?).unwrap())
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyclass]
+pub struct PyOblivionException {
+    pub message: String,
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl PyOblivionException {
+    #[new]
+    fn new(message: String) -> Self {
+        Self { message }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl Response {
+    #[new]
+    fn new(header: String, content: Vec<u8>, olps: String, status_code: i32) -> Self {
+        Self {
+            header,
+            content,
+            olps,
+            status_code,
+        }
+    }
+
+    fn ok(&self) -> bool {
+        self.status_code < 400
+    }
+
+    fn text(&mut self) -> PyResult<String> {
+        match String::from_utf8(self.content.to_vec()) {
+            Ok(text) => Ok(text),
+            Err(_) => Err(PyErr::new::<PyOblivionException, _>(format!(
+                "Invalid Oblivion: {}",
+                self.olps
+            ))),
+        }
     }
 }
 
