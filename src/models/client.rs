@@ -1,7 +1,9 @@
 //! # Oblivion Client
 use crate::models::packet::{OED, OKE, OSC};
 
-use crate::exceptions::{OblivionException, PyOblivionException};
+use crate::exceptions::OblivionException;
+#[cfg(feature = "python")]
+use crate::exceptions::PyOblivionException;
 
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
@@ -20,13 +22,13 @@ use serde_json::{json, Value};
 
 #[cfg_attr(feature = "python", pyclass)]
 pub struct Response {
-    #[pyo3(get)]
+    #[cfg_attr(feature = "python", pyo3(get))]
     pub header: String,
-    #[pyo3(get)]
+    #[cfg_attr(feature = "python", pyo3(get))]
     pub content: Vec<u8>,
-    #[pyo3(get)]
+    #[cfg_attr(feature = "python", pyo3(get))]
     pub olps: String,
-    #[pyo3(get)]
+    #[cfg_attr(feature = "python", pyo3(get))]
     pub status_code: i32,
 }
 
@@ -62,7 +64,10 @@ impl Response {
     }
 
     pub fn json(&mut self) -> Result<Value, OblivionException> {
-        Ok(from_str::<Value>(&self.text()?).unwrap())
+        match from_str::<Value>(&self.text()?) {
+            Ok(json) => Ok(json),
+            Err(_) => Err(OblivionException::BadBytes),
+        }
     }
 }
 

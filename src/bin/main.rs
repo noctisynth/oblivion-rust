@@ -42,7 +42,7 @@ async fn main() {
     if !is_server {
         loop {
             let now = Instant::now();
-            get("127.0.0.1:813/path", true).await.unwrap();
+            get("127.0.0.1:7076/path", true).await.unwrap();
             println!("执行时间: {}", now.elapsed().as_millis());
         }
     } else {
@@ -53,7 +53,7 @@ async fn main() {
         path_route!(&mut router, "/welcome" => welcome);
         path_route!(&mut router, "/json" => json);
 
-        let mut server = Server::new("127.0.0.1", 813, router);
+        let mut server = Server::new("0.0.0.0", 7076, router);
         server.run().await;
     }
 }
