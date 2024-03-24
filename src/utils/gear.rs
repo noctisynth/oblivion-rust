@@ -35,7 +35,7 @@ impl AbsoluteNonceSequence {
 ///
 /// Used to abstract Oblivion's handling of transmitted data, wrapping all data type conversions.
 pub struct Socket {
-    tcp: TcpStream,
+    pub tcp: TcpStream,
 }
 
 impl Socket {
@@ -101,9 +101,16 @@ impl Socket {
     }
 
     pub async fn send(&mut self, data: &[u8]) -> Result<(), OblivionException> {
-        match self.tcp.write(data).await {
-            Ok(_) => Ok(()),
-            Err(_) => Err(OblivionException::UnexpectedDisconnection),
+        match self.tcp.write_all(&data).await {
+            Ok(_) => match self.tcp.flush().await {
+                Ok(_) => Ok(()),
+                Err(e) => Err(OblivionException::TCPWriteFailed {
+                    message: e.to_string(),
+                }),
+            },
+            Err(e) => Err(OblivionException::TCPWriteFailed {
+                message: e.to_string(),
+            }),
         }
     }
 
