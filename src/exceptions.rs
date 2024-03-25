@@ -1,10 +1,10 @@
 //! # Oblivion exception
 //! All exceptions to the Oblivion function return `OblivionException`.
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use ring::error::Unspecified;
 use scrypt::errors::InvalidOutputLen;
 use thiserror::Error;
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
 
 /// ## Oblivion exception iterator
 /// Use an iterator as the type of exception returned by a function.
@@ -55,6 +55,8 @@ pub enum OblivionException {
     EncryptError { error: Unspecified },
     #[error("Exception while decrypting: {error:?}")]
     DecryptError { error: Unspecified },
+    #[error("Failed to send some data: {message}")]
+    TCPWriteFailed { message: String },
 }
 
 #[cfg(feature = "python")]
