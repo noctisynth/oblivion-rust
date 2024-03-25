@@ -1,0 +1,7 @@
+version: '3'
+services:
+  oblivion-rust:
+    build: .
+    container_name: oblivion-rust
+    ports:
+      - "7076:7076"
