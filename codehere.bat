@@ -1,1 +1,1 @@
-code .
+powershell -c "Start-Process -WindowStyle hidden -FilePath "code .""
