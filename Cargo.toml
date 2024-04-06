@@ -21,6 +21,7 @@ oblivion-codegen = { path = "oblivion-codegen" }
 proc-macro2 = "1"
 futures = "0.3"
 thiserror = "1"
+anyhow = "1.0"
 
 pyo3 = { version = "0.20", optional = true }
 

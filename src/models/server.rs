@@ -1,10 +1,8 @@
 //! # Oblivion Server
 use std::net::SocketAddr;
 
-use crate::models::packet::{OED, OKE, OSC};
-
 use crate::exceptions::OblivionException;
-
+use crate::models::packet::{OED, OKE, OSC};
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::OblivionRequest;
@@ -12,6 +10,7 @@ use crate::utils::parser::OblivionRequest;
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
 
+use anyhow::{anyhow, Error, Result};
 use serde_json::from_slice;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -27,7 +26,7 @@ pub struct ServerConnection {
 }
 
 impl ServerConnection {
-    pub fn new() -> Result<Self, OblivionException> {
+    pub fn new() -> Result<Self> {
         let (private_key, public_key) = generate_key_pair()?;
 
         Ok(Self {
@@ -41,7 +40,7 @@ impl ServerConnection {
         &mut self,
         stream: &mut Socket,
         peer: SocketAddr,
-    ) -> Result<OblivionRequest, OblivionException> {
+    ) -> Result<OblivionRequest> {
         let len_header = stream.recv_len().await?;
         let header = stream.recv_str(len_header).await?;
         let mut request = OblivionRequest::new(&header)?;
@@ -57,20 +56,20 @@ impl ServerConnection {
         if request.method == "POST" {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(stream, 5).await?;
-            request.set_post(from_slice(&oed.get_data()).unwrap());
+            request.set_post(from_slice(&oed.get_data())?);
         } else if request.method == "GET" {
         } else if request.method == "PUT" {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(stream, 5).await?;
-            request.set_post(from_slice(&oed.get_data()).unwrap());
+            request.set_post(from_slice(&oed.get_data())?);
 
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(stream, 5).await?;
             request.set_put(oed.get_data());
         } else {
-            return Err(OblivionException::UnsupportedMethod {
+            return Err(Error::from(OblivionException::UnsupportedMethod {
                 method: request.method,
-            });
+            }));
         };
         Ok(request)
     }
@@ -79,7 +78,7 @@ impl ServerConnection {
         &mut self,
         stream: &mut Socket,
         peer: SocketAddr,
-    ) -> Result<OblivionRequest, OblivionException> {
+    ) -> Result<OblivionRequest> {
         self.handshake(stream, peer).await
     }
 }
@@ -92,9 +91,9 @@ pub async fn response(
     stream: &mut Socket,
     request: OblivionRequest,
     aes_key: Vec<u8>,
-) -> Result<i32, OblivionException> {
+) -> Result<i32> {
     let handler = route.get_handler();
-    let mut callback = handler(request).await;
+    let mut callback = handler(request).await?;
 
     let mut oed = OED::new(Some(aes_key));
     oed.from_bytes(callback.as_bytes()?)?;
@@ -109,18 +108,18 @@ async fn _handle(
     router: &mut Router,
     stream: &mut Socket,
     peer: SocketAddr,
-) -> Result<(OblivionRequest, i32), OblivionException> {
+) -> Result<(OblivionRequest, i32)> {
     stream.set_ttl(20);
     let mut connection = ServerConnection::new()?;
     let mut request = match connection.solve(stream, peer).await {
         Ok(request) => request,
         Err(_) => {
-            return Err(OblivionException::ServerError {
+            return Err(anyhow!(OblivionException::ServerError {
                 method: "CONNECT".to_string(),
                 ipaddr: peer.ip().to_string(),
                 olps: "-".to_string(),
                 status_code: 500,
-            })
+            }))
         }
     };
 
@@ -135,12 +134,12 @@ async fn _handle(
     {
         Ok(status_code) => status_code,
         Err(_) => {
-            return Err(OblivionException::ServerError {
+            return Err(anyhow!(OblivionException::ServerError {
                 method: request.get_method(),
                 ipaddr: request.get_ip(),
                 olps: request.get_olps(),
                 status_code: 501,
-            });
+            }));
         }
     };
 

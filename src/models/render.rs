@@ -1,5 +1,7 @@
 //! # Oblivion Render
+use futures::future::BoxFuture;
 use serde_json::Value;
+use anyhow::Result;
 
 use crate::exceptions::OblivionException;
 
@@ -9,6 +11,8 @@ pub enum BaseResponse {
     TextResponse(String, i32),
     JsonResponse(Value, i32),
 }
+
+pub type Response = BoxFuture<'static, Result<BaseResponse>>;
 
 pub struct FileResponse {}
 
@@ -20,7 +24,7 @@ pub struct TextResponse {
 impl TextResponse {
     pub fn new(text: &str, status_code: i32) -> Result<Self, OblivionException> {
         Ok(Self {
-            status_code: status_code,
+            status_code,
             text: text.to_string(),
         })
     }

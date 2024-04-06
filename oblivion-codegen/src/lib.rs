@@ -37,14 +37,15 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
 
     let func_name = &input.sig.ident;
     let func_args = &input.sig.inputs;
+    let func_return = &input.sig.output;
     let func_block = input.block;
 
     let expanded = quote! {
-        pub fn #func_name(#func_args) -> BoxFuture<'static, BaseResponse>
+        pub fn #func_name(#func_args) #func_return
         {
-            async move {
+            Box::pin(async move {
                 #func_block
-            }.boxed()
+            })
         }
     };
 

@@ -1,6 +1,5 @@
-use futures::future::{BoxFuture, FutureExt};
 use oblivion::api::get;
-use oblivion::models::render::BaseResponse;
+use oblivion::models::render::{BaseResponse, Response};
 use oblivion::models::router::{RoutePath, RouteType, Router};
 use oblivion::models::server::Server;
 use oblivion::path_route;
@@ -11,28 +10,28 @@ use std::env::args;
 use std::time::Instant;
 
 #[async_route]
-fn handler(mut _req: OblivionRequest) -> BaseResponse {
-    BaseResponse::TextResponse(
+fn handler(mut _req: OblivionRequest) -> Response {
+    Ok(BaseResponse::TextResponse(
         "每一个人都应该拥有守护信息与获得真实信息的神圣权利, 任何与之对抗的都是我们的敌人"
             .to_string(),
         200,
-    )
+    ))
 }
 
 #[async_route]
-fn welcome(mut req: OblivionRequest) -> BaseResponse {
-    BaseResponse::TextResponse(
+fn welcome(mut req: OblivionRequest) -> Response {
+    Ok(BaseResponse::TextResponse(
         format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
         200,
-    )
+    ))
 }
 
 #[async_route]
-fn json(_req: OblivionRequest) -> BaseResponse {
-    BaseResponse::JsonResponse(
+fn json(_req: OblivionRequest) -> Response {
+    Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "只身堕入极暗之永夜, 以期再世涅槃之阳光"}),
         200,
-    )
+    ))
 }
 
 #[tokio::main]
