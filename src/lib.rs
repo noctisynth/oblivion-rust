@@ -40,19 +40,18 @@ pub mod models {
 /// Routing can be simply implemented using routing macros:
 ///
 /// ```rust
-/// use futures::future::{BoxFuture, FutureExt};
 /// use oblivion::path_route;
 /// use oblivion::utils::parser::OblivionRequest;
-/// use oblivion::models::render::BaseResponse;
+/// use oblivion::models::render::{BaseResponse, Response};
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 ///
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> BaseResponse {
-///     BaseResponse::TextResponse(
+/// fn welcome(mut req: OblivionRequest) -> Response {
+///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
 ///        200,
-///     )
+///     ))
 /// }
 ///
 /// let mut router = Router::new();
@@ -63,9 +62,8 @@ pub mod models {
 #[macro_export]
 macro_rules! path_route {
     ($router:expr, $path:expr => $handler:ident) => {{
-        let mut router = $router;
         let route = $crate::models::router::Route::new($handler);
-        router.regist(
+        $router.regist(
             $crate::models::router::RoutePath::new($path, $crate::models::router::RouteType::Path),
             route,
         );
@@ -77,32 +75,30 @@ macro_rules! path_route {
 /// Starting routes can be simply implemented using the start route macro:
 ///
 /// ```rust
-/// use futures::future::{BoxFuture, FutureExt};
 /// use oblivion::startswith_route;
 /// use oblivion::utils::parser::OblivionRequest;
-/// use oblivion::models::render::BaseResponse;
+/// use oblivion::models::render::{BaseResponse, Response};
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 ///
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> BaseResponse {
-///     BaseResponse::TextResponse(
+/// fn welcome(mut req: OblivionRequest) -> Response {
+///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
 ///        200,
-///     )
+///     ))
 /// }
 ///
 /// let mut router = Router::new();
-/// startswith_route!(&mut router, "/welcome" => welcome);
+/// startswith_route!(router, "/welcome" => welcome);
 /// ```
 ///
 /// The above route will direct all Oblivion Location Path String starting with `/welcome`.
 #[macro_export]
 macro_rules! startswith_route {
     ($router:expr, $path:expr => $handler:ident) => {{
-        let mut router = $router;
         let route = $crate::models::router::Route::new($handler);
-        router.regist(
+        $router.regist(
             $crate::models::router::RoutePath::new(
                 $path,
                 $crate::models::router::RouteType::StartswithPath,
@@ -120,20 +116,20 @@ macro_rules! startswith_route {
 /// use futures::future::{BoxFuture, FutureExt};
 /// use oblivion::regex_route;
 /// use oblivion::utils::parser::OblivionRequest;
-/// use oblivion::models::render::BaseResponse;
+/// use oblivion::models::render::{BaseResponse, Response};
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 ///
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> BaseResponse {
-///     BaseResponse::TextResponse(
+/// fn welcome(mut req: OblivionRequest) -> Response {
+///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
 ///        200,
-///     )
+///     ))
 /// }
 ///
 /// let mut router = Router::new();
-/// regex_route!(&mut router, r"^/welcome/.*" => welcome);
+/// regex_route!(router, r"^/welcome/.*" => welcome);
 /// ```
 ///
 /// The above route will direct all Oblivion Location Path String starting with `/welcome/`.
@@ -142,9 +138,8 @@ macro_rules! startswith_route {
 #[macro_export]
 macro_rules! regex_route {
     ($router:expr, $path:expr => $handler:ident) => {{
-        let mut router = $router;
         let route = $crate::models::router::Route::new($handler);
-        router.regist(
+        $router.regist(
             $crate::models::router::RoutePath::new(
                 $path,
                 $crate::models::router::RouteType::RegexPath,

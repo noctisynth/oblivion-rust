@@ -7,28 +7,19 @@ use syn::{parse_macro_input, ItemFn};
 
 /// ## Oblivion 业务函数宏
 /// 
-/// 请在使用该属性宏的`.rs`文件中加入：
-/// 
-/// ```rust
-/// use futures::future::{BoxFuture, FutureExt};
-/// ```
-/// 
-/// 然后再引入并使用它。
-/// 
 /// 这是一个示例：
 /// 
 /// ```rust
-/// use futures::future::{BoxFuture, FutureExt};
 /// use oblivion::oblivion_codegen::async_route;
 /// use oblivion::utils::parser::OblivionRequest;
-/// use oblivion::models::render::BaseResponse;
+/// use oblivion::models::render::{BaseResponse, Response};
 /// 
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> BaseResponse {
-///     BaseResponse::TextResponse(
+/// fn welcome(mut req: OblivionRequest) -> Response {
+///     Ok(BaseResponse::TextResponse(
 ///         format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
 ///        200,
-///     )
+///     ))
 /// }
 /// ```
 #[proc_macro_attribute]
