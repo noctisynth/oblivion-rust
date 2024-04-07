@@ -133,13 +133,15 @@ async fn _handle(
     .await
     {
         Ok(status_code) => status_code,
-        Err(_) => {
-            return Err(anyhow!(OblivionException::ServerError {
-                method: request.get_method(),
-                ipaddr: request.get_ip(),
-                olps: request.get_olps(),
-                status_code: 501,
-            }));
+        Err(error) => {
+            eprintln!(
+                "Oblivion/1.1 {} From {} {} {}",
+                request.get_method(),
+                request.get_ip(),
+                request.get_olps(),
+                501
+            );
+            return Err(Error::from(error));
         }
     };
 
@@ -161,7 +163,7 @@ pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
                 status_code
             );
         }
-        Err(error) => println!("{}", error),
+        Err(error) => eprintln!("{}", error),
     }
 }
 
@@ -187,7 +189,7 @@ impl Server {
         let tcp = match TcpListener::bind(format!("{}:{}", self.host, self.port)).await {
             Ok(tcp) => tcp,
             Err(_) => {
-                println!(
+                eprintln!(
                     "{}",
                     OblivionException::AddressAlreadyInUse {
                         ipaddr: self.host.clone(),
