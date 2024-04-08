@@ -1,7 +1,7 @@
 //! # Oblivion Render
+use anyhow::Result;
 use futures::future::BoxFuture;
 use serde_json::Value;
-use anyhow::Result;
 
 use crate::exceptions::OblivionException;
 

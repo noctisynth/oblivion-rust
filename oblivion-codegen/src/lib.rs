@@ -6,14 +6,14 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
 /// ## Oblivion 业务函数宏
-/// 
+///
 /// 这是一个示例：
-/// 
+///
 /// ```rust
 /// use oblivion::oblivion_codegen::async_route;
 /// use oblivion::utils::parser::OblivionRequest;
 /// use oblivion::models::render::{BaseResponse, Response};
-/// 
+///
 /// #[async_route]
 /// fn welcome(mut req: OblivionRequest) -> Response {
 ///     Ok(BaseResponse::TextResponse(
