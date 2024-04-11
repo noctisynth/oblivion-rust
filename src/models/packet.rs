@@ -6,6 +6,7 @@ use crate::utils::gear::Socket;
 use crate::utils::generator::{generate_random_salt, generate_shared_key};
 use crate::utils::parser::length;
 
+use anyhow::{Error, Result};
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
 use rand::Rng;
@@ -16,25 +17,25 @@ pub struct ACK {
 }
 
 impl ACK {
-    pub fn new() -> Result<Self, OblivionException> {
+    pub fn new() -> Self {
         let mut rng = rand::thread_rng();
         let random_number: u16 = rng.gen_range(1000..=9999);
-        Ok(Self {
+        Self {
             sequence: random_number.to_string(),
-        })
+        }
     }
 
     pub fn equal_bytes(&mut self, __value: &[u8]) -> bool {
         __value == self.sequence.clone().into_bytes()
     }
 
-    pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<Self, OblivionException> {
+    pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<Self> {
         Ok(Self {
             sequence: stream.recv_str(4).await?,
         })
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<(), OblivionException> {
+    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<()> {
         stream.send(&self.plain_data()).await?;
         Ok(())
     }
@@ -49,20 +50,16 @@ pub struct OSC {
 }
 
 impl OSC {
-    pub fn from_int(status_code: i32) -> Result<Self, OblivionException> {
-        Ok(Self {
-            status_code: status_code,
-        })
+    pub fn from_int(status_code: i32) -> Self {
+        Self { status_code }
     }
 
-    pub async fn from_stream(stream: &mut Socket) -> Result<Self, OblivionException> {
+    pub async fn from_stream(stream: &mut Socket) -> Result<Self> {
         let status_code = stream.recv_int(3).await?;
-        Ok(Self {
-            status_code: status_code,
-        })
+        Ok(Self { status_code })
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<(), OblivionException> {
+    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<()> {
         stream.send(&self.plain_data()).await?;
         Ok(())
     }
@@ -260,12 +257,12 @@ impl OED {
         &mut self,
         stream: &mut Socket,
         total_attemps: i32,
-    ) -> Result<&mut Self, OblivionException> {
+    ) -> Result<&mut Self> {
         let mut attemp = 0;
         let mut ack = false;
 
         while attemp < total_attemps {
-            let mut ack_packet = ACK::new()?;
+            let mut ack_packet = ACK::new();
             let mut ack_packet = ack_packet.from_stream(stream).await?;
 
             let len_nonce = stream.recv_len().await?;
@@ -315,24 +312,20 @@ impl OED {
         }
         if !ack {
             stream.close().await?;
-            return Err(OblivionException::AllAttemptsRetryFailed {
+            return Err(Error::from(OblivionException::AllAttemptsRetryFailed {
                 times: total_attemps,
-            });
+            }));
         }
 
         Ok(self)
     }
 
-    pub async fn to_stream(
-        &mut self,
-        stream: &mut Socket,
-        total_attemps: i32,
-    ) -> Result<(), OblivionException> {
+    pub async fn to_stream(&mut self, stream: &mut Socket, total_attemps: i32) -> Result<()> {
         let attemp = 0;
         let mut ack = false;
 
         while attemp <= total_attemps {
-            let mut ack_packet = ACK::new()?;
+            let mut ack_packet = ACK::new();
             ack_packet.to_stream(stream).await?;
 
             stream.send(&self.plain_data()).await?;
@@ -354,9 +347,9 @@ impl OED {
 
         if !ack {
             stream.close().await?;
-            return Err(OblivionException::AllAttemptsRetryFailed {
+            return Err(Error::from(OblivionException::AllAttemptsRetryFailed {
                 times: total_attemps,
-            });
+            }));
         }
 
         Ok(())

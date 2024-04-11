@@ -1,9 +1,10 @@
 //! # Oblivion API Interface
 //!
 //! Oblivion provides methods for making direct GET, POST, PUT, etc. requests.
+use anyhow::Result;
 use serde_json::Value;
 
-use crate::{exceptions::OblivionException, models::client::Response};
+use crate::models::client::Response;
 
 use super::sessions::Session;
 
@@ -25,7 +26,7 @@ pub async fn request(
     data: Option<Value>,
     file: Option<Vec<u8>>,
     tfo: bool,
-) -> Result<Response, OblivionException> {
+) -> Result<Response> {
     let session = Session::new();
     session
         .request(method.to_string(), olps.to_string(), data, file, tfo)
@@ -33,22 +34,17 @@ pub async fn request(
 }
 
 /// GET method
-pub async fn get(olps: &str, tfo: bool) -> Result<Response, OblivionException> {
+pub async fn get(olps: &str, tfo: bool) -> Result<Response> {
     request("get", olps, None, None, tfo).await
 }
 
 /// POST method
-pub async fn post(olps: &str, data: Value, tfo: bool) -> Result<Response, OblivionException> {
+pub async fn post(olps: &str, data: Value, tfo: bool) -> Result<Response> {
     request("post", olps, Some(data), None, tfo).await
 }
 
 /// PUT method
-pub async fn put(
-    olps: &str,
-    data: Option<Value>,
-    file: Vec<u8>,
-    tfo: bool,
-) -> Result<Response, OblivionException> {
+pub async fn put(olps: &str, data: Option<Value>, file: Vec<u8>, tfo: bool) -> Result<Response> {
     request("put", olps, data, Some(file), tfo).await
 }
 
@@ -58,6 +54,6 @@ pub async fn forward(
     data: Option<Value>,
     file: Vec<u8>,
     tfo: bool,
-) -> Result<Response, OblivionException> {
+) -> Result<Response> {
     request("forward", olps, data, Some(file), tfo).await
 }

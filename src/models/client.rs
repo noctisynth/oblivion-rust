@@ -9,6 +9,7 @@ use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::{length, Oblivion, OblivionPath};
 
+use anyhow::{Error, Result};
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
 use tokio::net::TcpStream;
@@ -54,20 +55,12 @@ impl Response {
         self.status_code < 400
     }
 
-    pub fn text(&mut self) -> Result<String, OblivionException> {
-        match String::from_utf8(self.content.to_vec()) {
-            Ok(text) => Ok(text),
-            Err(_) => Err(OblivionException::InvalidOblivion {
-                olps: self.olps.to_string(),
-            }),
-        }
+    pub fn text(&mut self) -> Result<String> {
+        Ok(String::from_utf8(self.content.to_vec())?)
     }
 
-    pub fn json(&mut self) -> Result<Value, OblivionException> {
-        match from_str::<Value>(&self.text()?) {
-            Ok(json) => Ok(json),
-            Err(_) => Err(OblivionException::BadBytes),
-        }
+    pub fn json(&mut self) -> Result<Value> {
+        Ok(from_str::<Value>(&self.text()?)?)
     }
 }
 
@@ -143,7 +136,7 @@ impl Request {
         })
     }
 
-    pub async fn prepare(&mut self) -> Result<(), OblivionException> {
+    pub async fn prepare(&mut self) -> Result<()> {
         let (private_key, public_key) = generate_key_pair()?;
         (self.private_key, self.public_key) = (Some(private_key), Some(public_key));
 
@@ -152,10 +145,10 @@ impl Request {
                 .await
             {
                 Ok(tcp) => {
-                    tcp.set_ttl(20).unwrap();
+                    tcp.set_ttl(20)?;
                     tcp
                 }
-                Err(_) => return Err(OblivionException::ConnectionRefusedError),
+                Err(_) => return Err(Error::from(OblivionException::ConnectionRefusedError)),
             };
         self.tcp = Some(Socket::new(tcp));
 
@@ -183,7 +176,7 @@ impl Request {
         Ok(())
     }
 
-    pub async fn send(&mut self) -> Result<(), OblivionException> {
+    pub async fn send(&mut self) -> Result<()> {
         if self.method == "GET" {
             return Ok(());
         };
@@ -216,20 +209,20 @@ impl Request {
             oed.from_bytes(self.file.clone().unwrap())?;
             oed
         } else {
-            return Err(OblivionException::UnsupportedMethod {
+            return Err(Error::from(OblivionException::UnsupportedMethod {
                 method: self.method.to_string(),
-            });
+            }));
         };
 
         oed.to_stream(tcp, 5).await?;
         Ok(())
     }
 
-    pub async fn recv(&mut self) -> Result<Response, OblivionException> {
+    pub async fn recv(&mut self) -> Result<Response> {
         let tcp = self.tcp.as_mut().unwrap();
 
         if !self.prepared {
-            Err(OblivionException::ErrorNotPrepared)
+            Err(Error::from(OblivionException::ErrorNotPrepared))
         } else {
             let mut oed = OED::new(self.aes_key.clone());
             oed.from_stream(tcp, 5).await?;

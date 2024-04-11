@@ -99,7 +99,7 @@ pub async fn response(
     oed.from_bytes(callback.as_bytes()?)?;
     oed.to_stream(stream, 5).await?;
 
-    let mut osc = OSC::from_int(callback.get_status_code()?)?;
+    let mut osc = OSC::from_int(callback.get_status_code()?);
     osc.to_stream(stream).await?;
     Ok(callback.get_status_code()?)
 }
@@ -123,7 +123,7 @@ async fn _handle(
         }
     };
 
-    let mut route = router.get_handler(&request.olps);
+    let mut route = router.get_handler(&request.olps)?;
     let status_code = match response(
         &mut route,
         stream,

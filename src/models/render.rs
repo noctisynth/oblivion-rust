@@ -22,11 +22,11 @@ pub struct TextResponse {
 }
 
 impl TextResponse {
-    pub fn new(text: &str, status_code: i32) -> Result<Self, OblivionException> {
-        Ok(Self {
+    pub fn new(text: &str, status_code: i32) -> Self {
+        Self {
             status_code,
             text: text.to_string(),
-        })
+        }
     }
 
     pub fn as_bytes(&mut self) -> Vec<u8> {
@@ -44,11 +44,8 @@ pub struct JsonResponse {
 }
 
 impl JsonResponse {
-    pub fn new(data: Value, status_code: i32) -> Result<Self, OblivionException> {
-        Ok(Self {
-            data: data,
-            status_code: status_code,
-        })
+    pub fn new(data: Value, status_code: i32) -> Self {
+        Self { data, status_code }
     }
 
     pub fn as_bytes(&mut self) -> Vec<u8> {
@@ -67,11 +64,11 @@ impl BaseResponse {
                 method: "FileResponse".to_string(),
             }),
             Self::TextResponse(text, status_code) => {
-                let mut tres = TextResponse::new(&text, *status_code)?;
+                let mut tres = TextResponse::new(&text, *status_code);
                 Ok(tres.as_bytes())
             }
             Self::JsonResponse(data, status_code) => {
-                let mut jres = JsonResponse::new(data.clone(), *status_code)?;
+                let mut jres = JsonResponse::new(data.clone(), *status_code);
                 Ok(jres.as_bytes())
             }
         }
@@ -83,11 +80,11 @@ impl BaseResponse {
                 method: "FileResponse".to_string(),
             }),
             Self::TextResponse(text, status_code) => {
-                let mut tres = TextResponse::new(&text, *status_code)?;
+                let mut tres = TextResponse::new(&text, *status_code);
                 Ok(tres.get_status_code())
             }
             Self::JsonResponse(data, status_code) => {
-                let mut jres = JsonResponse::new(data.clone(), *status_code)?;
+                let mut jres = JsonResponse::new(data.clone(), *status_code);
                 Ok(jres.get_status_code())
             }
         }

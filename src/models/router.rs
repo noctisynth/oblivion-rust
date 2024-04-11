@@ -2,6 +2,7 @@
 use super::handler::not_found;
 use super::render::Response;
 use crate::utils::parser::OblivionRequest;
+use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -43,18 +44,18 @@ impl RoutePath {
     pub fn new(route: &str, route_type: RouteType) -> Self {
         Self {
             route: route.trim_end_matches("/").to_string(),
-            route_type: route_type,
+            route_type,
         }
     }
 
-    pub fn check(&mut self, olps: &str) -> bool {
+    pub fn check(&mut self, olps: &str) -> Result<bool> {
         if self.route_type == RouteType::RegexPath {
-            let regex = Regex::new(&self.route).unwrap();
-            regex.is_match(olps)
+            let regex = Regex::new(&self.route)?;
+            Ok(regex.is_match(olps))
         } else if self.route_type == RouteType::StartswithPath {
-            olps.starts_with(&self.route)
+            Ok(olps.starts_with(&self.route))
         } else {
-            self.route == olps.trim_end_matches("/")
+            Ok(self.route == olps.trim_end_matches("/"))
         }
     }
 }
@@ -85,13 +86,13 @@ impl Router {
         self.routes.insert(path.clone(), route);
     }
 
-    pub fn get_handler(&self, path: &str) -> Route {
+    pub fn get_handler(&self, path: &str) -> Result<Route> {
         for (route_path, route) in &self.routes {
             let mut route_path = route_path.clone();
-            if route_path.check(path) {
-                return route.clone();
+            if route_path.check(path)? {
+                return Ok(route.clone());
             };
         }
-        Route::new(not_found)
+        Ok(Route::new(not_found))
     }
 }
