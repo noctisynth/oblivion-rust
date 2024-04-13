@@ -15,11 +15,11 @@ pub fn decrypt_bytes(
     nonce: &[u8],
 ) -> Result<Vec<u8>, Unspecified> {
     // 使用 AES_KEY 加密
-    let unbound_key = UnboundKey::new(&AES_128_GCM, &aes_key)?;
-    let nonce_sequence = AbsoluteNonceSequence::new(nonce.to_vec());
+    let unbound_key = UnboundKey::new(&AES_128_GCM, aes_key)?;
+    let nonce_sequence = AbsoluteNonceSequence::new(nonce);
 
     let mut opening_key = OpeningKey::new(unbound_key, nonce_sequence);
-    let mut in_out = [cipherbytes.clone(), tag.to_vec()].concat(); // 复制一份
+    let mut in_out = [cipherbytes, tag.to_vec()].concat(); // 复制一份
     let decrypted_data = opening_key.open_in_place(Aad::empty(), &mut in_out)?;
 
     Ok(decrypted_data.to_vec())

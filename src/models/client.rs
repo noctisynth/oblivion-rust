@@ -114,7 +114,7 @@ impl Request {
         data: Option<Value>,
         file: Option<Vec<u8>>,
         tfo: bool,
-    ) -> Result<Self, OblivionException> {
+    ) -> Result<Self> {
         let method = method.to_uppercase();
         let path = OblivionPath::new(&olps)?;
         let olps = path.get_olps();

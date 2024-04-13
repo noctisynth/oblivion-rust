@@ -1,12 +1,13 @@
 //! # Oblivion Parser
 //!
 //! Used to parse and reconstruct data and store it.
+use anyhow::{Error, Result};
+use regex::Regex;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use crate::exceptions::OblivionException;
-use regex::Regex;
-use serde_json::Value;
 
 /// Packet size analysis function
 ///
@@ -60,11 +61,10 @@ pub struct OblivionPath {
 }
 
 impl OblivionPath {
-    pub fn new(obl_str: &str) -> Result<Self, OblivionException> {
+    pub fn new(obl_str: &str) -> Result<Self> {
         let re = Regex::new(
             r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<olps>.+)?$",
-        )
-        .unwrap();
+        )?;
 
         if let Some(captures) = re.captures(obl_str) {
             let mut extracted_values: HashMap<&str, Option<&str>> = HashMap::new();
@@ -99,9 +99,9 @@ impl OblivionPath {
                 olps,
             })
         } else {
-            Err(OblivionException::InvalidOblivion {
+            Err(Error::from(OblivionException::InvalidOblivion {
                 olps: obl_str.to_string(),
-            })
+            }))
         }
     }
 

@@ -1,5 +1,7 @@
 //! Oblivion Abstract Gear
 use crate::exceptions::OblivionException;
+
+use anyhow::Result;
 use ring::{
     aead::{Nonce, NonceSequence},
     error::Unspecified,
@@ -15,19 +17,19 @@ use tokio::{
 ///
 /// Warning: this is not a generalized generation scheme and should not be used in production environments,
 /// you should make sure that the Nonce you pass in is a sufficiently garbled byte string.
-pub struct AbsoluteNonceSequence {
-    nonce: Vec<u8>,
+pub struct AbsoluteNonceSequence<'a> {
+    nonce: &'a [u8],
 }
 
-impl NonceSequence for AbsoluteNonceSequence {
+impl<'a> NonceSequence for AbsoluteNonceSequence<'a> {
     fn advance(&mut self) -> Result<Nonce, Unspecified> {
-        Nonce::try_assume_unique_for_key(&self.nonce)
+        Nonce::try_assume_unique_for_key(self.nonce)
     }
 }
 
-impl AbsoluteNonceSequence {
-    pub fn new(nonce: Vec<u8>) -> Self {
-        Self { nonce: nonce }
+impl<'a> AbsoluteNonceSequence<'a> {
+    pub fn new(nonce: &'a [u8]) -> Self {
+        Self { nonce }
     }
 }
 
@@ -43,8 +45,9 @@ impl Socket {
         Self { tcp }
     }
 
-    pub fn set_ttl(&mut self, ttl: u32) {
-        self.tcp.set_ttl(ttl).unwrap()
+    pub fn set_ttl(&mut self, ttl: u32) -> Result<()> {
+        self.tcp.set_ttl(ttl)?;
+        Ok(())
     }
 
     pub async fn recv_len(&mut self) -> Result<usize, OblivionException> {

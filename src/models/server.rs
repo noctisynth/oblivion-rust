@@ -103,7 +103,7 @@ async fn _handle(
     stream: &mut Socket,
     peer: SocketAddr,
 ) -> Result<(OblivionRequest, i32)> {
-    stream.set_ttl(20);
+    stream.set_ttl(20)?;
     let mut connection = ServerConnection::new()?;
     let mut request = match connection.handshake(stream, peer).await {
         Ok(request) => request,
