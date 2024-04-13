@@ -183,20 +183,23 @@ impl Server {
         }
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&mut self) -> Result<()> {
         println!("Performing system checks...\n");
 
-        let tcp = match TcpListener::bind(format!("{}:{}", self.host, self.port)).await {
+        let address = format!("{}:{}", self.host, self.port);
+
+        let tcp = match TcpListener::bind(&address).await {
             Ok(tcp) => tcp,
-            Err(_) => {
+            Err(error) => {
                 eprintln!(
                     "{}",
-                    OblivionException::AddressAlreadyInUse {
-                        ipaddr: self.host.clone(),
-                        port: self.port
-                    }
+                    format!(
+                        "Destination address [{}] is already occupied!",
+                        address.bright_magenta()
+                    )
+                    .red()
                 );
-                return ();
+                return Err(Error::from(error));
             }
         };
 
@@ -210,5 +213,7 @@ impl Server {
             let router = self.router.clone();
             tokio::spawn(handle(router, stream, peer));
         }
+
+        Ok(())
     }
 }

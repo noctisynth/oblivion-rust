@@ -18,8 +18,6 @@ pub enum OblivionException {
     ConnectionRefusedError,
     #[error("Wrong Oblivion address: {olps}")]
     InvalidOblivion { olps: String },
-    #[error("Destination address [{ipaddr}:{port}] is already occupied.")]
-    AddressAlreadyInUse { ipaddr: String, port: i32 },
     #[error("Unexpected disconnection from the remote host, possibly due to manual disconnection or network censorship.")]
     UnexpectedDisconnection,
     #[error("Failed to decode the transmitted byte stream.")]

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use oblivion::api::get;
 use oblivion::models::render::{BaseResponse, Response};
 use oblivion::models::router::{RoutePath, RouteType, Router};
@@ -35,7 +36,7 @@ fn json(_req: OblivionRequest) -> Response {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let args: Vec<String> = args().collect();
     let is_server = if args.len() == 1 { true } else { false };
     if !is_server {
@@ -53,6 +54,7 @@ async fn main() {
         path_route!(&mut router, "/json" => json);
 
         let mut server = Server::new("0.0.0.0", 7076, router);
-        server.run().await;
+        server.run().await?;
     }
+    Ok(())
 }
