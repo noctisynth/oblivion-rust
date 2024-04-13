@@ -203,11 +203,22 @@ impl Server {
             }
         };
 
+        tokio::spawn(async move {
+            match tokio::signal::ctrl_c().await {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("{}", e.to_string().red());
+                    std::process::exit(1);
+                }
+            }
+            std::process::exit(0);
+        });
+
         println!(
             "Starting server at {}",
             format!("Oblivion://{}:{}/", self.host, self.port).bright_cyan()
         );
-        println!("Quit the server by CTRL-BREAK.");
+        println!("Quit the server by CTRL-BREAK.\n");
 
         while let Ok((stream, peer)) = tcp.accept().await {
             let router = self.router.clone();
