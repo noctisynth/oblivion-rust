@@ -7,10 +7,12 @@ use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::OblivionRequest;
 
+use chrono::Local;
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{Error, Result};
+use colored::Colorize;
 use serde_json::from_slice;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -73,14 +75,6 @@ impl ServerConnection {
         };
         Ok(request)
     }
-
-    pub async fn solve(
-        &mut self,
-        stream: &mut Socket,
-        peer: SocketAddr,
-    ) -> Result<OblivionRequest> {
-        self.handshake(stream, peer).await
-    }
 }
 
 /// Responser
@@ -111,15 +105,17 @@ async fn _handle(
 ) -> Result<(OblivionRequest, i32)> {
     stream.set_ttl(20);
     let mut connection = ServerConnection::new()?;
-    let mut request = match connection.solve(stream, peer).await {
+    let mut request = match connection.handshake(stream, peer).await {
         Ok(request) => request,
-        Err(_) => {
-            return Err(anyhow!(OblivionException::ServerError {
-                method: "CONNECT".to_string(),
-                ipaddr: peer.ip().to_string(),
-                olps: "-".to_string(),
-                status_code: 500,
-            }))
+        Err(error) => {
+            eprintln!(
+                "{} -> [{}] \"{}\" {}",
+                peer.ip().to_string().cyan(),
+                Local::now().format("%d/%m/%Y %H:%M:%S"),
+                "CONNECT".yellow(),
+                "500".red()
+            );
+            return Err(Error::from(error));
         }
     };
 
@@ -135,11 +131,11 @@ async fn _handle(
         Ok(status_code) => status_code,
         Err(error) => {
             eprintln!(
-                "Oblivion/1.1 {} From {} {} {}",
-                request.get_method(),
-                request.get_ip(),
-                request.get_olps(),
-                501
+                "{} -> [{}] \"{}\" {}",
+                request.get_ip().cyan(),
+                Local::now().format("%d/%m/%Y %H:%M:%S"),
+                &request.header.yellow(),
+                "501".red()
             );
             return Err(Error::from(error));
         }
@@ -154,16 +150,20 @@ pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
     match _handle(&mut router, &mut stream, peer).await {
         Ok((mut request, status_code)) => {
             println!(
-                "{}/{} {} From {} {} {}",
-                request.get_protocol(),
-                request.get_version(),
-                request.get_method(),
-                request.get_ip(),
-                request.get_olps(),
-                status_code
-            );
+                "{} -> [{}] \"{}\" {}",
+                request.get_ip().cyan(),
+                Local::now().format("%d/%m/%Y %H:%M:%S"),
+                &request.header.green(),
+                if status_code >= 500 {
+                    status_code.to_string().red()
+                } else if status_code < 500 && status_code >= 400 {
+                    status_code.to_string().yellow()
+                } else {
+                    status_code.to_string().cyan()
+                }
+            )
         }
-        Err(error) => eprintln!("{}", error),
+        Err(error) => eprintln!("{}", error.to_string().bright_red()),
     }
 }
 
@@ -200,7 +200,10 @@ impl Server {
             }
         };
 
-        println!("Starting server at Oblivion://{}:{}/", self.host, self.port);
+        println!(
+            "Starting server at {}",
+            format!("Oblivion://{}:{}/", self.host, self.port).bright_cyan()
+        );
         println!("Quit the server by CTRL-BREAK.");
 
         while let Ok((stream, peer)) = tcp.accept().await {

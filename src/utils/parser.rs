@@ -157,6 +157,7 @@ impl Oblivion {
 /// Oblivion Request Header Parser
 #[derive(Clone, Debug, PartialEq)]
 pub struct OblivionRequest {
+    pub(crate) header: String,
     pub(crate) method: String,
     pub(crate) olps: String,
     protocol: String,
@@ -213,12 +214,13 @@ impl OblivionRequest {
                 protocol,
                 version,
                 data: None,
-                plain_text: plain_text.to_owned(),
+                plain_text: plain_text.to_string(),
                 post: None,
                 put: None,
                 remote_addr: None,
                 remote_port: None,
                 aes_key: None,
+                header: header.to_string(),
             })
         } else {
             Err(OblivionException::BadProtocol {

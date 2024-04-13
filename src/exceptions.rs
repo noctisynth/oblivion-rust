@@ -34,13 +34,6 @@ pub enum OblivionException {
     AllAttemptsRetryFailed { times: i32 },
     #[error("Method [{method}] is not supported yet.")]
     UnsupportedMethod { method: String },
-    #[error("Oblivion/1.1 {method} From {ipaddr} {olps} {status_code}")]
-    ServerError {
-        method: String,
-        ipaddr: String,
-        olps: String,
-        status_code: i32,
-    },
     #[error("Invalid public key: {error:?}")]
     PublicKeyInvalid {
         #[from]
