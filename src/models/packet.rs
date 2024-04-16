@@ -12,6 +12,8 @@ use p256::PublicKey;
 use rand::Rng;
 use serde_json::Value;
 
+const STOP_FLAG: [u8; 4] = u32::MIN.to_be_bytes();
+
 pub struct ACK {
     sequence: u32,
 }
@@ -153,53 +155,19 @@ pub struct OED {
     encrypted_data: Option<Vec<u8>>,
     tag: Option<Vec<u8>>,
     nonce: Option<Vec<u8>>,
-    chunk_size: i32,
+    chunk_count: u32,
 }
 
 impl OED {
     pub fn new(aes_key: Option<Vec<u8>>) -> Self {
         Self {
-            aes_key: aes_key,
+            aes_key,
             data: None,
             encrypted_data: None,
             tag: None,
             nonce: None,
-            chunk_size: 0,
+            chunk_count: 0,
         }
-    }
-
-    fn serialize_bytes(&self, data: &[u8], size: Option<usize>) -> Result<Vec<Vec<u8>>> {
-        let size = if size.is_none() {
-            let size: usize = 1024;
-            size
-        } else {
-            let size = size.unwrap();
-            size
-        };
-
-        let mut serialized_bytes = Vec::new();
-        let data_size = data.len();
-
-        for i in (0..data_size).step_by(size) {
-            let buffer = &data[i..std::cmp::min(i + size, data_size)];
-            let buffer_length = length(&buffer.to_vec())?;
-            let mut serialized_chunk = Vec::with_capacity(buffer_length.len() + buffer.len());
-
-            if i + size > data_size {
-                serialized_chunk.extend_from_slice(&buffer_length);
-                serialized_chunk.extend_from_slice(buffer);
-                serialized_bytes.push(serialized_chunk);
-                break;
-            };
-
-            serialized_chunk.extend_from_slice(&buffer_length);
-            serialized_chunk.extend_from_slice(buffer);
-
-            serialized_bytes.push(serialized_chunk);
-        }
-
-        serialized_bytes.push((0 as u32).to_be_bytes().to_vec());
-        Ok(serialized_bytes)
     }
 
     pub fn from_json_or_string(
@@ -252,7 +220,7 @@ impl OED {
             self.tag = Some(stream.recv(len_tag).await?);
 
             let mut encrypted_data: Vec<u8> = Vec::new();
-            self.chunk_size = 0;
+            self.chunk_count = 0;
 
             loop {
                 let prefix = stream.recv_usize().await?;
@@ -267,7 +235,7 @@ impl OED {
                 }
 
                 encrypted_data.extend(add);
-                self.chunk_size += 1;
+                self.chunk_count += 1;
             }
 
             match decrypt_bytes(
@@ -283,7 +251,7 @@ impl OED {
                     break;
                 }
                 Err(error) => {
-                    stream.send(&(0 as u32).to_be_bytes()).await?;
+                    stream.send(&STOP_FLAG).await?;
                     eprintln!("An error occured: {error}\nRetried {attemp} times.");
                     attemp += 1;
                     continue;
@@ -310,14 +278,20 @@ impl OED {
 
             stream.send(&self.plain_data()?).await?;
 
-            self.chunk_size = 0;
-            for bytes in self
-                .serialize_bytes(&self.encrypted_data.as_ref().unwrap(), None)?
-                .iter()
-            {
-                stream.send(&bytes).await?;
-                self.chunk_size += 1;
+            self.chunk_count = 0;
+            let encrypted_data = self.encrypted_data.as_ref().unwrap();
+            let mut remaining_data = &encrypted_data[..];
+            while !remaining_data.is_empty() {
+                let chunk_size = remaining_data.len().min(2048);
+
+                let chunk_length = chunk_size as u32;
+
+                stream.send(&chunk_length.to_be_bytes()).await?;
+                stream.send(&remaining_data[..chunk_size]).await?;
+
+                remaining_data = &remaining_data[chunk_size..];
             }
+            stream.send(&STOP_FLAG).await?;
 
             if ack_packet.sequence == stream.recv_u32().await? {
                 ack = true;
