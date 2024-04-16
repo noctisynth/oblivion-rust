@@ -30,12 +30,12 @@ pub struct Response {
     #[cfg_attr(feature = "python", pyo3(get))]
     pub olps: String,
     #[cfg_attr(feature = "python", pyo3(get))]
-    pub status_code: i32,
+    pub status_code: u32,
 }
 
 #[cfg(not(feature = "python"))]
 impl Response {
-    pub fn new(header: String, content: Vec<u8>, olps: String, status_code: i32) -> Self {
+    pub fn new(header: String, content: Vec<u8>, olps: String, status_code: u32) -> Self {
         Self {
             header,
             content,
@@ -68,7 +68,7 @@ impl Response {
 #[pymethods]
 impl Response {
     #[new]
-    pub fn new(header: String, content: Vec<u8>, olps: String, status_code: i32) -> Self {
+    pub fn new(header: String, content: Vec<u8>, olps: String, status_code: u32) -> Self {
         Self {
             header,
             content,

@@ -43,7 +43,7 @@ impl ServerConnection {
         stream: &mut Socket,
         peer: SocketAddr,
     ) -> Result<OblivionRequest> {
-        let len_header = stream.recv_len().await?;
+        let len_header = stream.recv_usize().await?;
         let header = stream.recv_str(len_header).await?;
         let mut request = OblivionRequest::new(&header)?;
         request.set_remote_peer(&peer);
@@ -85,7 +85,7 @@ pub async fn response(
     stream: &mut Socket,
     request: OblivionRequest,
     aes_key: Vec<u8>,
-) -> Result<i32> {
+) -> Result<u32> {
     let handler = route.get_handler();
     let mut callback = handler(request).await?;
 
@@ -93,7 +93,7 @@ pub async fn response(
     oed.from_bytes(callback.as_bytes()?)?;
     oed.to_stream(stream, 5).await?;
 
-    let mut osc = OSC::from_int(callback.get_status_code()?);
+    let mut osc = OSC::from_u32(callback.get_status_code()?);
     osc.to_stream(stream).await?;
     Ok(callback.get_status_code()?)
 }
@@ -102,7 +102,7 @@ async fn _handle(
     router: &mut Router,
     stream: &mut Socket,
     peer: SocketAddr,
-) -> Result<(OblivionRequest, i32)> {
+) -> Result<(OblivionRequest, u32)> {
     stream.set_ttl(20)?;
     let mut connection = ServerConnection::new()?;
     let mut request = match connection.handshake(stream, peer).await {

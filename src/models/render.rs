@@ -7,9 +7,9 @@ use crate::exceptions::OblivionException;
 
 #[derive(Clone)]
 pub enum BaseResponse {
-    FileResponse(String, i32),
-    TextResponse(String, i32),
-    JsonResponse(Value, i32),
+    FileResponse(String, u32),
+    TextResponse(String, u32),
+    JsonResponse(Value, u32),
 }
 
 pub type Response = BoxFuture<'static, Result<BaseResponse>>;
@@ -17,12 +17,12 @@ pub type Response = BoxFuture<'static, Result<BaseResponse>>;
 pub struct FileResponse {}
 
 pub struct TextResponse {
-    status_code: i32,
+    status_code: u32,
     text: String,
 }
 
 impl TextResponse {
-    pub fn new(text: &str, status_code: i32) -> Self {
+    pub fn new(text: &str, status_code: u32) -> Self {
         Self {
             status_code,
             text: text.to_string(),
@@ -33,18 +33,18 @@ impl TextResponse {
         self.text.as_bytes().to_vec()
     }
 
-    pub fn get_status_code(&mut self) -> i32 {
+    pub fn get_status_code(&mut self) -> u32 {
         self.status_code
     }
 }
 
 pub struct JsonResponse {
     data: Value,
-    status_code: i32,
+    status_code: u32,
 }
 
 impl JsonResponse {
-    pub fn new(data: Value, status_code: i32) -> Self {
+    pub fn new(data: Value, status_code: u32) -> Self {
         Self { data, status_code }
     }
 
@@ -52,7 +52,7 @@ impl JsonResponse {
         self.data.to_string().as_bytes().to_vec()
     }
 
-    pub fn get_status_code(&mut self) -> i32 {
+    pub fn get_status_code(&mut self) -> u32 {
         self.status_code
     }
 }
@@ -74,7 +74,7 @@ impl BaseResponse {
         }
     }
 
-    pub fn get_status_code(&mut self) -> Result<i32, OblivionException> {
+    pub fn get_status_code(&mut self) -> Result<u32, OblivionException> {
         match self {
             Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod {
                 method: "FileResponse".to_string(),

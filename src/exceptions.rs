@@ -29,7 +29,7 @@ pub enum OblivionException {
     #[error("Exceeded expected packet size: {size}")]
     DataTooLarge { size: usize },
     #[error("All request attempts failed: {times}")]
-    AllAttemptsRetryFailed { times: i32 },
+    AllAttemptsRetryFailed { times: u32 },
     #[error("Method [{method}] is not supported yet.")]
     UnsupportedMethod { method: String },
     #[error("Invalid public key: {error:?}")]

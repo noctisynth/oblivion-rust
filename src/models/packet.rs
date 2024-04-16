@@ -13,25 +13,19 @@ use rand::Rng;
 use serde_json::Value;
 
 pub struct ACK {
-    sequence: String,
+    sequence: u32,
 }
 
 impl ACK {
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let random_number: u16 = rng.gen_range(1000..=9999);
         Self {
-            sequence: random_number.to_string(),
+            sequence: rand::thread_rng().gen_range(1000..=9999),
         }
-    }
-
-    pub fn equal_bytes(&mut self, __value: &[u8]) -> bool {
-        __value == self.sequence.clone().into_bytes()
     }
 
     pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<Self> {
         Ok(Self {
-            sequence: stream.recv_str(4).await?,
+            sequence: stream.recv_u32().await?,
         })
     }
 
@@ -40,22 +34,22 @@ impl ACK {
         Ok(())
     }
 
-    pub fn plain_data(&mut self) -> Vec<u8> {
-        self.sequence.clone().into_bytes()
+    pub fn plain_data(&mut self) -> [u8; 4] {
+        self.sequence.to_be_bytes()
     }
 }
 
 pub struct OSC {
-    pub status_code: i32,
+    pub status_code: u32,
 }
 
 impl OSC {
-    pub fn from_int(status_code: i32) -> Self {
+    pub fn from_u32(status_code: u32) -> Self {
         Self { status_code }
     }
 
     pub async fn from_stream(stream: &mut Socket) -> Result<Self> {
-        let status_code = stream.recv_int(3).await?;
+        let status_code = stream.recv_u32().await?;
         Ok(Self { status_code })
     }
 
@@ -64,9 +58,9 @@ impl OSC {
         Ok(())
     }
 
-    pub fn plain_data(&mut self) -> Vec<u8> {
-        let status_code = format!("{}", self.status_code);
-        status_code.into_bytes()
+    pub fn plain_data(&mut self) -> [u8; 4] {
+        let status_code = self.status_code as u32;
+        status_code.to_be_bytes()
     }
 }
 
@@ -98,7 +92,7 @@ impl<'a> OKE<'a> {
     }
 
     pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<&mut Self> {
-        let remote_public_key_length = stream.recv_len().await?;
+        let remote_public_key_length = stream.recv_usize().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes)?);
         self.shared_aes_key = Some(generate_shared_key(
@@ -109,14 +103,11 @@ impl<'a> OKE<'a> {
         Ok(self)
     }
 
-    pub async fn from_stream_with_salt(
-        &mut self,
-        stream: &mut Socket,
-    ) -> Result<&mut Self, OblivionException> {
-        let remote_public_key_length = stream.recv_len().await?;
+    pub async fn from_stream_with_salt(&mut self, stream: &mut Socket) -> Result<&mut Self> {
+        let remote_public_key_length = stream.recv_usize().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes)?);
-        let salt_length = stream.recv_len().await?;
+        let salt_length = stream.recv_usize().await?;
         self.salt = Some(stream.recv(salt_length).await?);
         self.shared_aes_key = Some(generate_shared_key(
             self.private_key.unwrap(),
@@ -139,14 +130,14 @@ impl<'a> OKE<'a> {
 
     pub fn plain_data(&mut self) -> Result<Vec<u8>> {
         let public_key_bytes = self.public_key.unwrap().to_sec1_bytes().to_vec();
-        let mut plain_data_bytes = length(&public_key_bytes)?;
+        let mut plain_data_bytes = length(&public_key_bytes)?.to_vec();
         plain_data_bytes.extend(public_key_bytes);
         Ok(plain_data_bytes)
     }
 
     pub fn plain_salt(&mut self) -> Result<Vec<u8>> {
         let salt_bytes = self.salt.as_ref().unwrap();
-        let mut plain_salt_bytes = length(&salt_bytes)?;
+        let mut plain_salt_bytes = length(&salt_bytes)?.to_vec();
         plain_salt_bytes.extend(salt_bytes);
         Ok(plain_salt_bytes)
     }
@@ -207,7 +198,7 @@ impl OED {
             serialized_bytes.push(serialized_chunk);
         }
 
-        serialized_bytes.push(b"0000".to_vec());
+        serialized_bytes.push((0 as u32).to_be_bytes().to_vec());
         Ok(serialized_bytes)
     }
 
@@ -245,7 +236,7 @@ impl OED {
     pub async fn from_stream(
         &mut self,
         stream: &mut Socket,
-        total_attemps: i32,
+        total_attemps: u32,
     ) -> Result<&mut Self> {
         let mut attemp = 0;
         let mut ack = false;
@@ -254,8 +245,8 @@ impl OED {
             let mut ack_packet = ACK::new();
             let mut ack_packet = ack_packet.from_stream(stream).await?;
 
-            let len_nonce = stream.recv_len().await?;
-            let len_tag = stream.recv_len().await?;
+            let len_nonce = stream.recv_usize().await?;
+            let len_tag = stream.recv_usize().await?;
 
             self.nonce = Some(stream.recv(len_nonce).await?);
             self.tag = Some(stream.recv(len_tag).await?);
@@ -264,7 +255,7 @@ impl OED {
             self.chunk_size = 0;
 
             loop {
-                let prefix = stream.recv_len().await?;
+                let prefix = stream.recv_usize().await?;
                 if prefix == 0 {
                     self.encrypted_data = Some(encrypted_data);
                     break;
@@ -287,13 +278,13 @@ impl OED {
             ) {
                 Ok(data) => {
                     self.data = Some(data);
-                    stream.send(&ack_packet.plain_data()).await?;
+                    ack_packet.to_stream(stream).await?;
                     ack = true;
                     break;
                 }
                 Err(error) => {
-                    stream.send(b"0000").await?;
-                    println!("An error occured: {error}\nRetried {attemp} times.");
+                    stream.send(&(0 as u32).to_be_bytes()).await?;
+                    eprintln!("An error occured: {error}\nRetried {attemp} times.");
                     attemp += 1;
                     continue;
                 }
@@ -309,7 +300,7 @@ impl OED {
         Ok(self)
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket, total_attemps: i32) -> Result<()> {
+    pub async fn to_stream(&mut self, stream: &mut Socket, total_attemps: u32) -> Result<()> {
         let attemp = 0;
         let mut ack = false;
 
@@ -317,7 +308,7 @@ impl OED {
             let mut ack_packet = ACK::new();
             ack_packet.to_stream(stream).await?;
 
-            stream.send(&self.plain_data()).await?;
+            stream.send(&self.plain_data()?).await?;
 
             self.chunk_size = 0;
             for bytes in self
@@ -328,7 +319,7 @@ impl OED {
                 self.chunk_size += 1;
             }
 
-            if ack_packet.sequence.as_bytes() == stream.recv(4).await? {
+            if ack_packet.sequence == stream.recv_u32().await? {
                 ack = true;
                 break;
             }
@@ -344,16 +335,16 @@ impl OED {
         Ok(())
     }
 
-    pub fn plain_data(&mut self) -> Vec<u8> {
+    pub fn plain_data(&mut self) -> Result<Vec<u8>> {
         let nonce_bytes = self.nonce.as_ref().unwrap();
         let tag_bytes = self.tag.as_ref().unwrap();
 
-        let mut plain_bytes = length(nonce_bytes).unwrap();
+        let mut plain_bytes = length(nonce_bytes)?.to_vec();
         plain_bytes.extend(length(tag_bytes).unwrap());
         plain_bytes.extend(nonce_bytes);
         plain_bytes.extend(tag_bytes);
 
-        plain_bytes
+        Ok(plain_bytes)
     }
 
     pub fn get_data(&mut self) -> Vec<u8> {

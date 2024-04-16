@@ -25,20 +25,16 @@ use crate::exceptions::OblivionException;
 /// ```
 ///
 /// The `vec` in the above example is a `Vec<u8>` of length 39, and `length(&vec)` gets `b "0039".to_vec()`.
-pub fn length(bytes: &Vec<u8>) -> Result<Vec<u8>, OblivionException> {
-    let str_num = bytes.len().to_string();
-    if str_num.len() == 4 {
-        return Ok(str_num.into_bytes());
-    } else if str_num.len() >= 4 {
-        return Err(OblivionException::DataTooLarge { size: bytes.len() });
+pub fn length(bytes: &Vec<u8>) -> Result<[u8; 4], OblivionException> {
+    let size = bytes.len() as u32;
+
+    if size > 4096 {
+        return Err(OblivionException::DataTooLarge {
+            size: size as usize,
+        });
     }
 
-    let mut list_num: Vec<char> = str_num.chars().collect();
-    while list_num.len() != 4 {
-        list_num.insert(0, '0');
-    }
-
-    Ok(list_num.into_iter().collect::<String>().into_bytes())
+    Ok(size.to_be_bytes())
 }
 
 /// Oblivion Location Path String Parser
