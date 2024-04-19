@@ -26,14 +26,7 @@ pub mod utils {
 /// # Oblivion Models
 ///
 /// Oblivion provides all front- and back-end models, including packet building as well as client-side and server-side building.
-pub mod models {
-    pub mod client;
-    pub mod handler;
-    pub mod packet;
-    pub mod render;
-    pub mod router;
-    pub mod server;
-}
+pub mod models;
 
 /// Absolute Routing Macros
 ///

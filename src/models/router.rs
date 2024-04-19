@@ -13,7 +13,7 @@ pub struct Route {
 
 impl Route {
     pub fn new(handler: fn(OblivionRequest) -> Response) -> Self {
-        Self { handler: handler }
+        Self { handler }
     }
 
     pub fn clone(&mut self) -> Self {

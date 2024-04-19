@@ -18,14 +18,6 @@ pub enum OblivionException {
     ConnectionRefusedError,
     #[error("Wrong Oblivion address: {olps}")]
     InvalidOblivion { olps: String },
-    #[error("Unexpected disconnection from the remote host, possibly due to manual disconnection or network censorship.")]
-    UnexpectedDisconnection,
-    #[error("Failed to decode the transmitted byte stream.")]
-    BadBytes,
-    #[error(
-        "The request was timed out, either due to a network problem or an attack on the server."
-    )]
-    ConnectTimedOut,
     #[error("Exceeded expected packet size: {size}")]
     DataTooLarge { size: usize },
     #[error("All request attempts failed: {times}")]
@@ -46,8 +38,6 @@ pub enum OblivionException {
     EncryptError { error: Unspecified },
     #[error("Exception while decrypting: {error:?}")]
     DecryptError { error: Unspecified },
-    #[error("Failed to send some data: {message}")]
-    TCPWriteFailed { message: String },
 }
 
 #[cfg(feature = "python")]
