@@ -168,7 +168,7 @@ impl Request {
         Ok(())
     }
 
-    pub async fn send_header(&mut self) -> Result<(), OblivionException> {
+    pub async fn send_header(&mut self) -> Result<()> {
         let tcp = self.tcp.as_mut().unwrap();
         let header = self.plain_text.as_bytes().to_vec();
         tcp.send(&length(&header)?).await?;

@@ -35,12 +35,12 @@ impl<'a> AbsoluteNonceSequence<'a> {
 ///
 /// Used to abstract Oblivion's handling of transmitted data, wrapping all data type conversions.
 #[derive(Debug)]
-pub struct Socket<'a> {
-    pub tcp: &'a mut TcpStream,
+pub struct Socket {
+    pub tcp: TcpStream,
 }
 
-impl<'a> Socket<'a> {
-    pub fn new(tcp: &'a mut TcpStream) -> Self {
+impl Socket {
+    pub fn new(tcp: TcpStream) -> Self {
         Self { tcp }
     }
 
