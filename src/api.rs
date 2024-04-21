@@ -25,35 +25,29 @@ pub async fn request(
     olps: &str,
     data: Option<Value>,
     file: Option<Vec<u8>>,
-    tfo: bool,
 ) -> Result<Response> {
     let session = Session::new();
     session
-        .request(method.to_string(), olps.to_string(), data, file, tfo)
+        .request(method.to_string(), olps.to_string(), data, file)
         .await
 }
 
 /// GET method
-pub async fn get(olps: &str, tfo: bool) -> Result<Response> {
-    request("get", olps, None, None, tfo).await
+pub async fn get(olps: &str) -> Result<Response> {
+    request("get", olps, None, None).await
 }
 
 /// POST method
-pub async fn post(olps: &str, data: Value, tfo: bool) -> Result<Response> {
-    request("post", olps, Some(data), None, tfo).await
+pub async fn post(olps: &str, data: Value) -> Result<Response> {
+    request("post", olps, Some(data), None).await
 }
 
 /// PUT method
-pub async fn put(olps: &str, data: Option<Value>, file: Vec<u8>, tfo: bool) -> Result<Response> {
-    request("put", olps, data, Some(file), tfo).await
+pub async fn put(olps: &str, data: Option<Value>, file: Vec<u8>) -> Result<Response> {
+    request("put", olps, data, Some(file)).await
 }
 
-#[deprecated(since = "1.0.0", note = "FORWARD method may no longer supported.")]
-pub async fn forward(
-    olps: &str,
-    data: Option<Value>,
-    file: Vec<u8>,
-    tfo: bool,
-) -> Result<Response> {
-    request("forward", olps, data, Some(file), tfo).await
+#[deprecated(since = "1.0.0", note = "FORWARD method is no longer supported.")]
+pub async fn forward(olps: &str, data: Option<Value>, file: Vec<u8>) -> Result<Response> {
+    request("forward", olps, data, Some(file)).await
 }

@@ -1,12 +1,14 @@
 //! Oblivion Abstract Gear
+use std::net::SocketAddr;
+
 use anyhow::Result;
-use ring::{
-    aead::{Nonce, NonceSequence},
-    error::Unspecified,
-};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
+use ring::aead::{Nonce, NonceSequence};
+use ring::error::Unspecified;
+
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{
+    tcp::{ReadHalf, WriteHalf},
+    TcpStream,
 };
 
 /// Absolute Nonce Sequence Structure
@@ -49,6 +51,10 @@ impl Socket {
         Ok(())
     }
 
+    pub fn peer_addr(&mut self) -> Result<SocketAddr> {
+        Ok(self.tcp.peer_addr()?)
+    }
+
     pub async fn recv_usize(&mut self) -> Result<usize> {
         let mut len_bytes = [0; 4];
         self.tcp.read_exact(&mut len_bytes).await?;
@@ -83,5 +89,9 @@ impl Socket {
     pub async fn close(&mut self) -> Result<()> {
         self.tcp.shutdown().await?;
         Ok(())
+    }
+
+    pub async fn split(&mut self) -> Result<(ReadHalf, WriteHalf)> {
+        Ok(self.tcp.split())
     }
 }

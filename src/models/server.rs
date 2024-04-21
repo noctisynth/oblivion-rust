@@ -1,169 +1,83 @@
 //! # Oblivion Server
 use std::net::SocketAddr;
+use std::sync::Arc;
 
-use crate::exceptions::OblivionException;
-use crate::models::packet::{OED, OKE, OSC};
 use crate::utils::gear::Socket;
-use crate::utils::generator::generate_key_pair;
-use crate::utils::parser::OblivionRequest;
-
-use chrono::Local;
-use p256::ecdh::EphemeralSecret;
-use p256::PublicKey;
 
 use anyhow::{Error, Result};
+use chrono::Local;
 use colored::Colorize;
-use serde_json::from_slice;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex;
 
-use super::router::{Route, Router};
+use super::packet::{OED, OSC};
+use super::router::Router;
+use super::session::Session;
 
-/// Server Connection Solver
-///
-/// Handshake between server and client.
-pub struct ServerConnection {
-    private_key: EphemeralSecret,
-    public_key: PublicKey,
-    aes_key: Option<Vec<u8>>,
-}
+async fn _handle(router: &mut Router, mut socket: Socket, peer: SocketAddr) -> Result<String> {
+    socket.set_ttl(20)?;
 
-impl ServerConnection {
-    pub fn new() -> Result<Self> {
-        let (private_key, public_key) = generate_key_pair()?;
+    let session = Arc::new(Mutex::new(Session::new(socket)?));
 
-        Ok(Self {
-            private_key,
-            public_key,
-            aes_key: None,
-        })
+    let mut brd_sess = session.lock().await;
+
+    if let Err(error) = brd_sess.handshake(1).await {
+        eprintln!(
+            "{} -> [{}] \"{}\" {}",
+            peer.ip().to_string().cyan(),
+            Local::now().format("%d/%m/%Y %H:%M:%S"),
+            "CONNECT".yellow(),
+            "500".red()
+        );
+        return Err(Error::from(error));
     }
 
-    pub async fn handshake(
-        &mut self,
-        stream: &mut Socket,
-        peer: SocketAddr,
-    ) -> Result<OblivionRequest> {
-        let len_header = stream.recv_usize().await?;
-        let header = stream.recv_str(len_header).await?;
-        let mut request = OblivionRequest::new(&header)?;
-        request.set_remote_peer(&peer);
+    let header = brd_sess.header.as_ref().unwrap().clone();
+    let ip_addr = brd_sess.request.as_mut().unwrap().get_ip();
+    let aes_key = brd_sess.aes_key.clone().unwrap();
 
-        let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
-        oke.to_stream_with_salt(stream).await?;
-        oke.from_stream(stream).await?;
-
-        request.aes_key = Some(oke.get_aes_key());
-        self.aes_key = Some(oke.get_aes_key());
-
-        if request.method == "POST" {
-            let mut oed = OED::new(self.aes_key.clone());
-            oed.from_stream(stream, 5).await?;
-            request.set_post(from_slice(&oed.get_data())?);
-        } else if request.method == "GET" {
-        } else if request.method == "PUT" {
-            let mut oed = OED::new(self.aes_key.clone());
-            oed.from_stream(stream, 5).await?;
-            request.set_post(from_slice(&oed.get_data())?);
-
-            let mut oed = OED::new(self.aes_key.clone());
-            oed.from_stream(stream, 5).await?;
-            request.set_put(oed.get_data());
-        } else {
-            return Err(Error::from(OblivionException::UnsupportedMethod {
-                method: request.method,
-            }));
-        };
-        Ok(request)
-    }
-}
-
-/// Responser
-///
-/// Send response back to client requester.
-pub async fn response(
-    route: &mut Route,
-    stream: &mut Socket,
-    request: OblivionRequest,
-    aes_key: Vec<u8>,
-) -> Result<u32> {
+    let mut route = router.get_handler(&brd_sess.request.as_ref().unwrap().olps)?;
     let handler = route.get_handler();
-    let mut callback = handler(request).await?;
+    let mut callback = handler(&mut brd_sess).await?;
 
-    let mut oed = OED::new(Some(aes_key));
-    oed.from_bytes(callback.as_bytes()?)?;
-    oed.to_stream(stream, 5).await?;
+    let status_code = callback.get_status_code()?;
 
-    let mut osc = OSC::from_u32(callback.get_status_code()?);
-    osc.to_stream(stream).await?;
-    Ok(callback.get_status_code()?)
-}
+    OSC::from_u32(1).to_stream(&mut brd_sess.socket).await?;
+    OED::new(Some(aes_key))
+        .from_bytes(callback.as_bytes()?)?
+        .to_stream(&mut brd_sess.socket, 5)
+        .await?;
+    OSC::from_u32(callback.get_status_code()?)
+        .to_stream(&mut brd_sess.socket)
+        .await?;
 
-async fn _handle(
-    router: &mut Router,
-    stream: &mut Socket,
-    peer: SocketAddr,
-) -> Result<(OblivionRequest, u32)> {
-    stream.set_ttl(20)?;
-    let mut connection = ServerConnection::new()?;
-    let mut request = match connection.handshake(stream, peer).await {
-        Ok(request) => request,
-        Err(error) => {
-            eprintln!(
-                "{} -> [{}] \"{}\" {}",
-                peer.ip().to_string().cyan(),
-                Local::now().format("%d/%m/%Y %H:%M:%S"),
-                "CONNECT".yellow(),
-                "500".red()
-            );
-            return Err(Error::from(error));
+    let display = format!(
+        "{} -> [{}] \"{}\" {}",
+        ip_addr.cyan(),
+        Local::now().format("%d/%m/%Y %H:%M:%S"),
+        header.green(),
+        if status_code >= 500 {
+            status_code.to_string().red()
+        } else if status_code < 500 && status_code >= 400 {
+            status_code.to_string().yellow()
+        } else {
+            status_code.to_string().cyan()
         }
-    };
+    );
 
-    let mut route = router.get_handler(&request.olps)?;
-    let status_code = match response(
-        &mut route,
-        stream,
-        request.clone(),
-        connection.aes_key.unwrap(),
-    )
-    .await
-    {
-        Ok(status_code) => status_code,
-        Err(error) => {
-            eprintln!(
-                "{} -> [{}] \"{}\" {}",
-                request.get_ip().cyan(),
-                Local::now().format("%d/%m/%Y %H:%M:%S"),
-                &request.header.yellow(),
-                "501".red()
-            );
-            return Err(Error::from(error));
-        }
-    };
-
-    Ok((request, status_code))
+    Ok(display)
 }
 
 pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
-    let mut stream = Socket::new(stream);
+    let socket = Socket::new(stream);
     let mut router = router;
-    match _handle(&mut router, &mut stream, peer).await {
-        Ok((mut request, status_code)) => {
-            println!(
-                "{} -> [{}] \"{}\" {}",
-                request.get_ip().cyan(),
-                Local::now().format("%d/%m/%Y %H:%M:%S"),
-                &request.header.green(),
-                if status_code >= 500 {
-                    status_code.to_string().red()
-                } else if status_code < 500 && status_code >= 400 {
-                    status_code.to_string().yellow()
-                } else {
-                    status_code.to_string().cyan()
-                }
-            )
+    match _handle(&mut router, socket, peer).await {
+        Ok(display) => {
+            println!("{}", display)
         }
-        Err(error) => eprintln!("{}", error.to_string().bright_red()),
+        Err(error) => {
+            eprintln!("{}", error.to_string().bright_red())
+        }
     }
 }
 

@@ -2,7 +2,7 @@
 use anyhow::Result;
 use serde_json::Value;
 
-use crate::models::client::{Request, Response};
+use crate::models::client::{Client, Response};
 
 /// ## Oblivion Abstract Session
 ///
@@ -18,21 +18,11 @@ impl Session {
         &self,
         method: String,
         olps: String,
-        data: Option<Value>,
-        file: Option<Vec<u8>>,
-        tfo: bool,
+        _data: Option<Value>,
+        _file: Option<Vec<u8>>,
     ) -> Result<Response> {
-        let mut req = Request::new(method, olps, data, file, tfo)?;
+        let mut req = Client::new(method, olps)?;
         req.prepare().await?;
-        Ok(self.send(&mut req).await?)
-    }
-
-    pub async fn send(&self, request: &mut Request) -> Result<Response> {
-        if request.is_prepared() != true {
-            request.prepare().await?;
-        }
-
-        request.send().await?;
-        Ok(request.recv().await?)
+        Ok(req.recv().await?)
     }
 }

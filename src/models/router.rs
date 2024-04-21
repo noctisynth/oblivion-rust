@@ -1,18 +1,20 @@
 //! # Oblivion Router
 use super::handler::not_found;
 use super::render::Response;
-use crate::utils::parser::OblivionRequest;
+use super::session::Session;
 use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
 
+pub type Handler = fn(&mut Session) -> Response;
+
 #[derive(Clone)]
 pub struct Route {
-    handler: fn(OblivionRequest) -> Response,
+    handler: Handler,
 }
 
 impl Route {
-    pub fn new(handler: fn(OblivionRequest) -> Response) -> Self {
+    pub fn new(handler: Handler) -> Self {
         Self { handler }
     }
 
@@ -22,7 +24,7 @@ impl Route {
         }
     }
 
-    pub fn get_handler(&mut self) -> fn(OblivionRequest) -> Response {
+    pub fn get_handler(&mut self) -> Handler {
         self.handler.clone()
     }
 }
@@ -72,11 +74,7 @@ impl Router {
         }
     }
 
-    pub fn route(
-        &mut self,
-        path: RoutePath,
-        handler: fn(OblivionRequest) -> Response,
-    ) -> &mut Self {
+    pub fn route(&mut self, path: RoutePath, handler: Handler) -> &mut Self {
         self.routes.insert(path.clone(), Route { handler: handler });
         self
     }

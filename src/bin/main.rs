@@ -3,15 +3,15 @@ use oblivion::api::get;
 use oblivion::models::render::{BaseResponse, Response};
 use oblivion::models::router::{RoutePath, RouteType, Router};
 use oblivion::models::server::Server;
+use oblivion::models::session::Session;
 use oblivion::path_route;
-use oblivion::utils::parser::OblivionRequest;
 use oblivion_codegen::async_route;
 use serde_json::json;
 use std::env::args;
 use std::time::Instant;
 
 #[async_route]
-fn handler(mut _req: OblivionRequest) -> Response {
+fn handler(_sess: &mut Session) -> Response {
     Ok(BaseResponse::TextResponse(
         "每一个人都应该拥有守护信息与获得真实信息的神圣权利, 任何与之对抗的都是我们的敌人"
             .to_string(),
@@ -20,17 +20,25 @@ fn handler(mut _req: OblivionRequest) -> Response {
 }
 
 #[async_route]
-fn welcome(mut req: OblivionRequest) -> Response {
+fn welcome(_sess: &mut Session) -> Response {
     Ok(BaseResponse::TextResponse(
-        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
+        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", 1),
         200,
     ))
 }
 
 #[async_route]
-fn json(_req: OblivionRequest) -> Response {
+fn json(_sess: &mut Session) -> Response {
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "只身堕入极暗之永夜, 以期再世涅槃之阳光"}),
+        200,
+    ))
+}
+
+#[async_route]
+async fn alive(mut _sess: Session) -> Response {
+    Ok(BaseResponse::JsonResponse(
+        json!({"status": true, "msg": "结束"}),
         200,
     ))
 }
@@ -42,7 +50,7 @@ async fn main() -> Result<()> {
     if !is_server {
         loop {
             let now = Instant::now();
-            get("127.0.0.1:7076/path", true).await.unwrap();
+            get("127.0.0.1:7076/path").await?;
             println!("执行时间: {}", now.elapsed().as_millis());
         }
     } else {

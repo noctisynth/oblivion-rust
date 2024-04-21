@@ -1,5 +1,5 @@
 //! # Oblivion Client
-use crate::models::packet::{OED, OKE, OSC};
+use crate::models::packet::{OED, OSC};
 
 use crate::exceptions::OblivionException;
 #[cfg(feature = "python")]
@@ -7,7 +7,7 @@ use crate::exceptions::PyOblivionException;
 
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
-use crate::utils::parser::{length, Oblivion, OblivionPath};
+use crate::utils::parser::{Oblivion, OblivionPath};
 
 use anyhow::{Error, Result};
 use p256::ecdh::EphemeralSecret;
@@ -17,11 +17,14 @@ use tokio::net::TcpStream;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(not(feature = "python"))]
-use serde_json::{from_str, json, Value};
+use serde_json::{from_str, Value};
 #[cfg(feature = "python")]
 use serde_json::{json, Value};
 
+use super::session::Session;
+
 #[cfg_attr(feature = "python", pyclass)]
+#[derive(Debug, Default)]
 pub struct Response {
     #[cfg_attr(feature = "python", pyo3(get))]
     pub header: String,
@@ -92,47 +95,29 @@ impl Response {
     }
 }
 
-pub struct Request {
-    method: String,
+pub struct Client {
     olps: String,
     path: OblivionPath,
-    data: Option<Value>,
-    file: Option<Vec<u8>>,
-    tfo: bool,
     plain_text: String,
-    prepared: bool,
     private_key: Option<EphemeralSecret>,
     public_key: Option<PublicKey>,
-    aes_key: Option<Vec<u8>>,
-    tcp: Option<Socket>,
+    session: Option<Session>,
 }
 
-impl Request {
-    pub fn new(
-        method: String,
-        olps: String,
-        data: Option<Value>,
-        file: Option<Vec<u8>>,
-        tfo: bool,
-    ) -> Result<Self> {
+impl Client {
+    pub fn new(method: String, olps: String) -> Result<Self> {
         let method = method.to_uppercase();
         let path = OblivionPath::new(&olps)?;
         let olps = path.get_olps();
         let oblivion = Oblivion::new(&method, &olps);
         let plain_text = oblivion.plain_text();
         Ok(Self {
-            method,
             olps,
             path,
-            data,
-            file,
-            tfo,
-            plain_text,
-            prepared: false,
+            plain_text: plain_text.clone(),
             private_key: None,
             public_key: None,
-            aes_key: None,
-            tcp: None,
+            session: None,
         })
     }
 
@@ -150,96 +135,48 @@ impl Request {
                 }
                 Err(_) => return Err(Error::from(OblivionException::ConnectionRefusedError)),
             };
-        self.tcp = Some(Socket::new(tcp));
 
-        if self.tfo {
-            // 在这里启用TCP Fast Open
-        };
+        self.session = Some(Session::new_with_header(
+            &self.plain_text,
+            Socket::new(tcp),
+        )?);
 
-        self.send_header().await?;
+        let session = self.session.as_mut().unwrap();
+        session.handshake(0).await?;
 
-        let mut oke = OKE::new(Some(&self.private_key.as_ref().unwrap()), self.public_key)?;
-        oke.from_stream_with_salt(self.tcp.as_mut().unwrap())
-            .await?;
-        self.aes_key = Some(oke.get_aes_key());
-        oke.to_stream(self.tcp.as_mut().unwrap()).await?;
-
-        self.prepared = true;
         Ok(())
     }
 
-    pub async fn send_header(&mut self) -> Result<()> {
-        let tcp = self.tcp.as_mut().unwrap();
-        let header = self.plain_text.as_bytes().to_vec();
-        tcp.send(&length(&header)?).await?;
-        tcp.send(&header).await?;
-        Ok(())
-    }
-
-    pub async fn send(&mut self) -> Result<()> {
-        if self.method == "GET" {
-            return Ok(());
-        };
-
-        let tcp = self.tcp.as_mut().unwrap();
-        let mut oed = if self.method == "POST" {
-            if self.data.is_none() {
-                let mut oed = OED::new(self.aes_key.clone());
-                oed.from_dict(json!({}))?;
-                oed
-            } else {
-                let mut oed = OED::new(self.aes_key.clone());
-                oed.from_dict(self.data.clone().unwrap())?;
-                oed
-            }
-        } else if self.method == "PUT" {
-            let mut oed = if self.data.is_none() {
-                let mut oed = OED::new(self.aes_key.clone());
-                oed.from_dict(json!({}))?;
-                oed
-            } else {
-                let mut oed = OED::new(self.aes_key.clone());
-                oed.from_dict(self.data.clone().unwrap())?;
-                oed
-            };
-
-            oed.to_stream(tcp, 5).await?;
-
-            let mut oed = OED::new(self.aes_key.clone());
-            oed.from_bytes(self.file.clone().unwrap())?;
-            oed
-        } else {
-            return Err(Error::from(OblivionException::UnsupportedMethod {
-                method: self.method.to_string(),
-            }));
-        };
-
+    pub async fn send(&mut self, bytes: Vec<u8>) -> Result<()> {
+        let session = self.session.as_mut().unwrap();
+        let tcp = &mut session.socket;
+        let mut oed = OED::new(session.aes_key.clone());
+        oed.from_bytes(bytes)?;
         oed.to_stream(tcp, 5).await?;
         Ok(())
     }
 
     pub async fn recv(&mut self) -> Result<Response> {
-        let tcp = self.tcp.as_mut().unwrap();
+        let session = self.session.as_mut().unwrap();
+        let tcp = &mut session.socket;
 
-        if !self.prepared {
-            Err(Error::from(OblivionException::ErrorNotPrepared))
-        } else {
-            let mut oed = OED::new(self.aes_key.clone());
-            oed.from_stream(tcp, 5).await?;
+        let flag = OSC::from_stream(tcp).await?;
 
-            let osc = OSC::from_stream(tcp).await?;
+        let mut oed = OED::new(session.aes_key.clone());
+        oed.from_stream(tcp, 5).await?;
 
-            let response = Response::new(
-                self.plain_text.clone(),
-                oed.get_data(),
-                self.olps.clone(),
-                osc.status_code,
-            );
-            Ok(response)
+        let osc = OSC::from_stream(tcp).await?;
+
+        let response = Response::new(
+            self.plain_text.clone(),
+            oed.get_data(),
+            self.olps.clone(),
+            osc.status_code,
+        );
+
+        if flag.status_code == 1 {
+            tcp.close().await?;
         }
-    }
-
-    pub fn is_prepared(&mut self) -> bool {
-        self.prepared
+        Ok(response)
     }
 }
