@@ -8,7 +8,6 @@ use anyhow::{Error, Result};
 use chrono::Local;
 use colored::Colorize;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
 
 use super::packet::{OED, OSC};
 use super::router::Router;
@@ -17,11 +16,9 @@ use super::session::Session;
 async fn _handle(router: &mut Router, mut socket: Socket, peer: SocketAddr) -> Result<String> {
     socket.set_ttl(20)?;
 
-    let session = Arc::new(Mutex::new(Session::new(socket)?));
+    let mut session = Session::new(socket)?;
 
-    let mut brd_sess = session.lock().await;
-
-    if let Err(error) = brd_sess.handshake(1).await {
+    if let Err(error) = session.handshake(1).await {
         eprintln!(
             "{} -> [{}] \"{}\" {}",
             peer.ip().to_string().cyan(),
@@ -32,23 +29,25 @@ async fn _handle(router: &mut Router, mut socket: Socket, peer: SocketAddr) -> R
         return Err(Error::from(error));
     }
 
-    let header = brd_sess.header.as_ref().unwrap().clone();
-    let ip_addr = brd_sess.request.as_mut().unwrap().get_ip();
-    let aes_key = brd_sess.aes_key.clone().unwrap();
+    let header = session.header.as_ref().unwrap().clone();
+    let ip_addr = session.request.as_mut().unwrap().get_ip();
+    let aes_key = session.aes_key.clone().unwrap();
 
-    let mut route = router.get_handler(&brd_sess.request.as_ref().unwrap().olps)?;
-    let handler = route.get_handler();
-    let mut callback = handler(&mut brd_sess).await?;
+    let arc_socket = Arc::clone(&session.socket);
+    let mut socket = arc_socket.lock().await;
+
+    let mut route = router.get_handler(&session.request.as_ref().unwrap().olps)?;
+    let mut callback = route.get_handler()(session).await?;
 
     let status_code = callback.get_status_code()?;
 
-    OSC::from_u32(1).to_stream(&mut brd_sess.socket).await?;
+    OSC::from_u32(1).to_stream(&mut socket).await?;
     OED::new(Some(aes_key))
         .from_bytes(callback.as_bytes()?)?
-        .to_stream(&mut brd_sess.socket, 5)
+        .to_stream(&mut socket, 5)
         .await?;
     OSC::from_u32(callback.get_status_code()?)
-        .to_stream(&mut brd_sess.socket)
+        .to_stream(&mut socket)
         .await?;
 
     let display = format!(

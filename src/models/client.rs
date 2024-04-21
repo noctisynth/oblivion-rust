@@ -149,7 +149,7 @@ impl Client {
 
     pub async fn send(&mut self, bytes: Vec<u8>) -> Result<()> {
         let session = self.session.as_mut().unwrap();
-        let tcp = &mut session.socket;
+        let tcp = &mut session.socket.lock().await;
         let mut oed = OED::new(session.aes_key.clone());
         oed.from_bytes(bytes)?;
         oed.to_stream(tcp, 5).await?;
@@ -158,23 +158,23 @@ impl Client {
 
     pub async fn recv(&mut self) -> Result<Response> {
         let session = self.session.as_mut().unwrap();
-        let tcp = &mut session.socket;
+        let tcp = &mut session.socket.lock().await;
 
-        let flag = OSC::from_stream(tcp).await?;
+        let flag = OSC::from_stream(tcp).await?.status_code;
 
-        let mut oed = OED::new(session.aes_key.clone());
-        oed.from_stream(tcp, 5).await?;
-
-        let osc = OSC::from_stream(tcp).await?;
+        let content = OED::new(session.aes_key.clone())
+            .from_stream(tcp, 5)
+            .await?
+            .get_data();
 
         let response = Response::new(
             self.plain_text.clone(),
-            oed.get_data(),
+            content,
             self.olps.clone(),
-            osc.status_code,
+            OSC::from_stream(tcp).await?.status_code,
         );
 
-        if flag.status_code == 1 {
+        if flag == 1 {
             tcp.close().await?;
         }
         Ok(response)

@@ -6,7 +6,7 @@ use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
 
-pub type Handler = fn(&mut Session) -> Response;
+pub type Handler = fn(Session) -> Response;
 
 #[derive(Clone)]
 pub struct Route {
@@ -16,12 +16,6 @@ pub struct Route {
 impl Route {
     pub fn new(handler: Handler) -> Self {
         Self { handler }
-    }
-
-    pub fn clone(&mut self) -> Self {
-        Self {
-            handler: self.handler.clone(),
-        }
     }
 
     pub fn get_handler(&mut self) -> Handler {

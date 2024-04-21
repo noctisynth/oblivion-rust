@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Local};
 use p256::{ecdh::EphemeralSecret, PublicKey};
+use tokio::sync::Mutex;
 
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
@@ -15,7 +18,7 @@ pub struct Session {
     pub(crate) aes_key: Option<Vec<u8>>,
     pub request_time: DateTime<Local>,
     pub request: Option<OblivionRequest>,
-    pub socket: Socket,
+    pub socket: Arc<Mutex<Socket>>,
 }
 
 impl Session {
@@ -28,7 +31,7 @@ impl Session {
             aes_key: None,
             request_time: Local::now(),
             request: None,
-            socket,
+            socket: Arc::new(Mutex::new(socket)),
         })
     }
 
@@ -41,12 +44,12 @@ impl Session {
             aes_key: None,
             request_time: Local::now(),
             request: None,
-            socket,
+            socket: Arc::new(Mutex::new(socket)),
         })
     }
 
     pub async fn first_hand(&mut self) -> Result<()> {
-        let socket = &mut self.socket;
+        let socket = &mut self.socket.lock().await;
         let header = self.header.as_ref().unwrap().as_bytes();
         socket
             .send(&[&length(&header.to_vec())?, header].concat())
@@ -60,7 +63,7 @@ impl Session {
     }
 
     pub async fn second_hand(&mut self) -> Result<()> {
-        let socket = &mut self.socket;
+        let socket = &mut self.socket.lock().await;
         let peer = socket.peer_addr()?;
         let len_header = socket.recv_usize().await?;
         let header = socket.recv_str(len_header).await?;
@@ -90,10 +93,10 @@ impl Session {
 
     pub async fn send(
         &mut self,
-        socket: &mut Socket,
         data: Vec<u8>,
         status_code: u32,
     ) -> Result<()> {
+        let socket = &mut self.socket.lock().await;
         OSC::from_u32(0).to_stream(socket).await?;
         OED::new(Some(self.aes_key.clone().unwrap()))
             .from_bytes(data)?
