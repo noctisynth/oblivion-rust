@@ -1,10 +1,11 @@
 use anyhow::Result;
-use oblivion::api::get;
+use oblivion::models::client::Client;
 use oblivion::models::render::{BaseResponse, Response};
 use oblivion::models::router::{RoutePath, RouteType, Router};
 use oblivion::models::server::Server;
 use oblivion::models::session::Session;
 use oblivion::path_route;
+use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
 use oblivion_codegen::async_route;
 use serde_json::json;
 use std::env::args;
@@ -39,7 +40,8 @@ fn json(_sess: Session) -> Response {
 }
 
 #[async_route]
-async fn alive(mut _sess: Session) -> Response {
+async fn alive(mut sess: Session) -> Response {
+    sess.send("test".into(), 200).await?;
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "结束"}),
         200,
@@ -52,14 +54,42 @@ async fn main() -> Result<()> {
     if args.len() <= 1 {
         args.push("serve".to_string());
     }
+    if args.len() <= 2 {
+        args.push("/welcome".to_string());
+    }
     match args[1].as_str() {
+        "keygen" => {
+            let now = Instant::now();
+            generate_key_pair()?;
+            println!("执行时间: {}", now.elapsed().as_millis());
+        }
+        "dh" => {
+            let now = Instant::now();
+            let (pr, pu) = generate_key_pair()?;
+            let (alice_pr, alice_pu) = generate_key_pair()?;
+            let salt = generate_random_salt();
+            let mut shared_bob = SharedKey::new(&pr, &alice_pu);
+            let mut shared_alice = SharedKey::new(&alice_pr, &pu);
+            let bob_key = shared_bob.hkdf(&salt)?;
+            let alice_key = shared_alice.hkdf(&salt)?;
+            assert_eq!(bob_key, alice_key);
+            println!("执行时间: {}", now.elapsed().as_millis());
+        }
         "bench" => loop {
             let now = Instant::now();
-            let mut res = get("127.0.0.1:7076/welcome").await?;
-            println!("{}", res.text()?);
+            let mut client = Client::new("CONNECT", format!("127.0.0.1:7076{}", args[2]))?;
+            client.connect().await?;
+            client.recv().await?.text()?;
+            client.close().await?;
             println!("执行时间: {}", now.elapsed().as_millis());
         },
-        "socket" => todo!(),
+        "socket" => {
+            let mut client = Client::new("CONNECT", format!("127.0.0.1:7076{}", args[2]))?;
+            client.connect().await?;
+            client.recv().await?.text()?;
+            client.recv().await?.json()?;
+            client.close().await?;
+        }
         "serve" => {
             let mut router = Router::new();
 
@@ -67,6 +97,7 @@ async fn main() -> Result<()> {
 
             path_route!(&mut router, "/welcome" => welcome);
             path_route!(&mut router, "/json" => json);
+            path_route!(&mut router, "/alive" => alive);
 
             let mut server = Server::new("0.0.0.0", 7076, router);
             server.run().await?;

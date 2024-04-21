@@ -21,7 +21,7 @@ use crate::exceptions::OblivionException;
 ///
 /// let vec = b"fw4rg45245ygergeqwrgqwerg342rg342gjisdu".to_vec();
 ///
-/// assert_eq!(b"0039".to_vec(), length(&vec).unwrap());
+/// assert_eq!((39 as u32).to_be_bytes(), length(&vec).unwrap());
 /// ```
 ///
 /// The `vec` in the above example is a `Vec<u8>` of length 39, and `length(&vec)` gets `b "0039".to_vec()`.

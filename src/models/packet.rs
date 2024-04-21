@@ -3,7 +3,7 @@ use crate::exceptions::OblivionException;
 use crate::utils::decryptor::decrypt_bytes;
 use crate::utils::encryptor::{encrypt_bytes, encrypt_plaintext};
 use crate::utils::gear::Socket;
-use crate::utils::generator::{generate_random_salt, generate_shared_key};
+use crate::utils::generator::{generate_random_salt, SharedKey};
 use crate::utils::parser::length;
 
 use anyhow::{Error, Result};
@@ -66,6 +66,12 @@ impl OSC {
     }
 }
 
+impl From<u32> for OSC {
+    fn from(value: u32) -> Self {
+        Self { status_code: value }
+    }
+}
+
 pub struct OKE<'a> {
     public_key: Option<PublicKey>,
     private_key: Option<&'a EphemeralSecret>,
@@ -97,11 +103,11 @@ impl<'a> OKE<'a> {
         let remote_public_key_length = stream.recv_usize().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes)?);
-        self.shared_aes_key = Some(generate_shared_key(
+        let mut shared_key = SharedKey::new(
             self.private_key.as_ref().unwrap(),
             self.remote_public_key.as_ref().unwrap(),
-            &self.salt.as_mut().unwrap(),
-        )?);
+        );
+        self.shared_aes_key = Some(shared_key.hkdf(&self.salt.as_mut().unwrap())?);
         Ok(self)
     }
 
@@ -111,11 +117,11 @@ impl<'a> OKE<'a> {
         self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes)?);
         let salt_length = stream.recv_usize().await?;
         self.salt = Some(stream.recv(salt_length).await?);
-        self.shared_aes_key = Some(generate_shared_key(
-            self.private_key.unwrap(),
-            &self.remote_public_key.unwrap(),
-            self.salt.as_mut().unwrap(),
-        )?);
+        let mut shared_key = SharedKey::new(
+            self.private_key.as_ref().unwrap(),
+            self.remote_public_key.as_ref().unwrap(),
+        );
+        self.shared_aes_key = Some(shared_key.hkdf(&self.salt.as_mut().unwrap())?);
         Ok(self)
     }
 

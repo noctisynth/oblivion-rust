@@ -91,12 +91,9 @@ impl Session {
         Ok(())
     }
 
-    pub async fn send(
-        &mut self,
-        data: Vec<u8>,
-        status_code: u32,
-    ) -> Result<()> {
+    pub async fn send(&mut self, data: Vec<u8>, status_code: u32) -> Result<()> {
         let socket = &mut self.socket.lock().await;
+
         OSC::from_u32(0).to_stream(socket).await?;
         OED::new(Some(self.aes_key.clone().unwrap()))
             .from_bytes(data)?
@@ -104,5 +101,13 @@ impl Session {
             .await?;
         OSC::from_u32(status_code).to_stream(socket).await?;
         Ok(())
+    }
+
+    pub fn header(&mut self) -> String {
+        self.header.clone().unwrap()
+    }
+
+    pub fn get_ip(&mut self) -> String {
+        self.request.as_mut().unwrap().get_ip()
     }
 }

@@ -8,9 +8,9 @@
 //! which makes it possible to apply it to message dispatching and just-in-time communication.
 pub extern crate oblivion_codegen;
 pub extern crate proc_macro;
-pub mod api;
+
+/// # Oblivion Exceptions
 pub mod exceptions;
-pub mod sessions;
 
 /// # Oblivion Utilities
 ///
@@ -34,15 +34,15 @@ pub mod models;
 ///
 /// ```rust
 /// use oblivion::path_route;
-/// use oblivion::utils::parser::OblivionRequest;
 /// use oblivion::models::render::{BaseResponse, Response};
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
+/// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> Response {
+/// fn welcome(mut sess: Session) -> Response {
 ///     Ok(BaseResponse::TextResponse(
-///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
+///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", sess.get_ip()),
 ///        200,
 ///     ))
 /// }
@@ -69,15 +69,15 @@ macro_rules! path_route {
 ///
 /// ```rust
 /// use oblivion::startswith_route;
-/// use oblivion::utils::parser::OblivionRequest;
 /// use oblivion::models::render::{BaseResponse, Response};
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
+/// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> Response {
+/// fn welcome(mut sess: Session) -> Response {
 ///     Ok(BaseResponse::TextResponse(
-///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
+///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", sess.get_ip()),
 ///        200,
 ///     ))
 /// }
@@ -106,17 +106,16 @@ macro_rules! startswith_route {
 /// Regular routing can be simply implemented using regular routing macros:
 ///
 /// ```rust
-/// use futures::future::{BoxFuture, FutureExt};
 /// use oblivion::regex_route;
-/// use oblivion::utils::parser::OblivionRequest;
 /// use oblivion::models::render::{BaseResponse, Response};
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
+/// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut req: OblivionRequest) -> Response {
+/// fn welcome(mut sess: Session) -> Response {
 ///     Ok(BaseResponse::TextResponse(
-///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", req.get_ip()),
+///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", sess.get_ip()),
 ///        200,
 ///     ))
 /// }

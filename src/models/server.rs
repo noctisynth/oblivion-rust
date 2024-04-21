@@ -29,18 +29,18 @@ async fn _handle(router: &mut Router, mut socket: Socket, peer: SocketAddr) -> R
         return Err(Error::from(error));
     }
 
-    let header = session.header.as_ref().unwrap().clone();
-    let ip_addr = session.request.as_mut().unwrap().get_ip();
+    let header = session.header();
+    let ip_addr = session.get_ip();
     let aes_key = session.aes_key.clone().unwrap();
 
     let arc_socket = Arc::clone(&session.socket);
-    let mut socket = arc_socket.lock().await;
 
     let mut route = router.get_handler(&session.request.as_ref().unwrap().olps)?;
     let mut callback = route.get_handler()(session).await?;
 
     let status_code = callback.get_status_code()?;
 
+    let mut socket = arc_socket.lock().await;
     OSC::from_u32(1).to_stream(&mut socket).await?;
     OED::new(Some(aes_key))
         .from_bytes(callback.as_bytes()?)?
