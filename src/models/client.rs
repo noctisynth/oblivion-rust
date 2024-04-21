@@ -105,7 +105,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(method: String, olps: String) -> Result<Self> {
+    pub fn new(method: &str, olps: String) -> Result<Self> {
         let method = method.to_uppercase();
         let path = OblivionPath::new(&olps)?;
         let olps = path.get_olps();
@@ -121,7 +121,7 @@ impl Client {
         })
     }
 
-    pub async fn prepare(&mut self) -> Result<()> {
+    pub async fn connect(&mut self) -> Result<()> {
         let (private_key, public_key) = generate_key_pair()?;
         (self.private_key, self.public_key) = (Some(private_key), Some(public_key));
 
@@ -158,25 +158,32 @@ impl Client {
 
     pub async fn recv(&mut self) -> Result<Response> {
         let session = self.session.as_mut().unwrap();
-        let tcp = &mut session.socket.lock().await;
+        let socket = &mut session.socket.lock().await;
 
-        let flag = OSC::from_stream(tcp).await?.status_code;
-
+        let flag = OSC::from_stream(socket).await?.status_code;
         let content = OED::new(session.aes_key.clone())
-            .from_stream(tcp, 5)
+            .from_stream(socket, 5)
             .await?
             .get_data();
+        let status_code = OSC::from_stream(socket).await?.status_code;
 
         let response = Response::new(
             self.plain_text.clone(),
             content,
             self.olps.clone(),
-            OSC::from_stream(tcp).await?.status_code,
+            status_code,
         );
 
         if flag == 1 {
-            tcp.close().await?;
+            socket.close().await?;
         }
         Ok(response)
+    }
+
+    pub async fn close(&mut self) -> Result<()> {
+        let session = self.session.as_mut().unwrap();
+        let tcp = &mut session.socket.lock().await;
+        tcp.close().await?;
+        Ok(())
     }
 }
