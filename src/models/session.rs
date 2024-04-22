@@ -9,6 +9,7 @@ use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::{length, OblivionRequest};
 
+use super::client::Response;
 use super::packet::{OED, OKE, OSC};
 
 pub struct Session {
@@ -95,12 +96,29 @@ impl Session {
         let socket = &mut self.socket.lock().await;
 
         OSC::from_u32(0).to_stream(socket).await?;
-        OED::new(Some(self.aes_key.clone().unwrap()))
+        OED::new(self.aes_key.clone())
             .from_bytes(data)?
             .to_stream(socket, 5)
             .await?;
         OSC::from_u32(status_code).to_stream(socket).await?;
         Ok(())
+    }
+
+    pub async fn recv(&mut self) -> Result<Response> {
+        let socket = &mut self.socket.lock().await;
+
+        let flag = OSC::from_stream(socket).await?.status_code;
+        let content = OED::new(self.aes_key.clone())
+            .from_stream(socket, 5)
+            .await?
+            .get_data();
+        let status_code = OSC::from_stream(socket).await?.status_code;
+        let response = Response::new(None, content, None, status_code, flag);
+
+        if flag == 1 {
+            socket.close().await?;
+        }
+        Ok(response)
     }
 
     pub fn header(&mut self) -> String {

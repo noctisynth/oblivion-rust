@@ -1,18 +1,13 @@
 //! # Oblivion Client
-use crate::models::packet::{OED, OSC};
+use anyhow::{Error, Result};
+use tokio::net::TcpStream;
 
 use crate::exceptions::OblivionException;
 #[cfg(feature = "python")]
 use crate::exceptions::PyOblivionException;
 
 use crate::utils::gear::Socket;
-use crate::utils::generator::generate_key_pair;
-use crate::utils::parser::{Oblivion, OblivionPath};
-
-use anyhow::{Error, Result};
-use p256::ecdh::EphemeralSecret;
-use p256::PublicKey;
-use tokio::net::TcpStream;
+use crate::utils::parser::OblivionPath;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -25,33 +20,35 @@ use super::session::Session;
 
 #[cfg_attr(feature = "python", pyclass)]
 #[derive(Debug, Default)]
-pub struct Response {
+pub struct Response<'a> {
     #[cfg_attr(feature = "python", pyo3(get))]
-    pub header: String,
+    pub header: Option<&'a str>,
     #[cfg_attr(feature = "python", pyo3(get))]
     pub content: Vec<u8>,
     #[cfg_attr(feature = "python", pyo3(get))]
-    pub olps: String,
+    pub entrance: Option<&'a str>,
     #[cfg_attr(feature = "python", pyo3(get))]
     pub status_code: u32,
+    #[cfg_attr(feature = "python", pyo3(get))]
+    pub flag: u32,
 }
 
 #[cfg(not(feature = "python"))]
-impl Response {
-    pub fn new(header: String, content: Vec<u8>, olps: String, status_code: u32) -> Self {
+impl<'a> Response<'a> {
+    pub fn new(
+        header: Option<&'a str>,
+        content: Vec<u8>,
+        entrance: Option<&'a str>,
+        status_code: u32,
+        flag: u32,
+    ) -> Self {
         Self {
             header,
             content,
-            olps,
+            entrance,
             status_code,
+            flag,
         }
-    }
-
-    pub fn equals(&mut self, response: Response) -> bool {
-        response.header == self.header
-            && response.content == self.content
-            && response.olps.trim_end_matches("/") == self.olps.trim_end_matches("/")
-            && response.status_code == self.status_code
     }
 
     pub fn ok(&self) -> bool {
@@ -64,6 +61,29 @@ impl Response {
 
     pub fn json(&mut self) -> Result<Value> {
         Ok(from_str::<Value>(&self.text()?)?)
+    }
+}
+
+impl<'a> PartialEq for Response<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.entrance.is_none() {
+            self.header == other.header
+                && self.content == other.content
+                && self.entrance == other.entrance
+                && self.status_code == other.status_code
+                && self.flag == other.flag
+        } else {
+            if other.entrance.is_none() {
+                false
+            } else {
+                self.header == other.header
+                    && self.content == other.content
+                    && self.entrance.unwrap().trim_end_matches("/")
+                        == other.entrance.unwrap().trim_end_matches("/")
+                    && self.status_code == other.status_code
+                    && self.flag == other.flag
+            }
+        }
     }
 }
 
@@ -96,92 +116,52 @@ impl Response {
 }
 
 pub struct Client {
-    olps: String,
-    path: OblivionPath,
-    plain_text: String,
-    private_key: Option<EphemeralSecret>,
-    public_key: Option<PublicKey>,
-    session: Option<Session>,
+    pub entrance: String,
+    pub path: OblivionPath,
+    pub header: String,
+    pub session: Session,
 }
 
 impl Client {
-    pub fn new(method: &str, olps: String) -> Result<Self> {
-        let method = method.to_uppercase();
-        let path = OblivionPath::new(&olps)?;
-        let olps = path.get_olps();
-        let oblivion = Oblivion::new(&method, &olps);
-        let plain_text = oblivion.plain_text();
+    pub async fn connect(entrance: &str) -> Result<Self> {
+        let path = OblivionPath::new(&entrance)?;
+        let header = format!("CONNECT {} Oblivion/2.0", path.get_olps());
+
+        let tcp = match TcpStream::connect(format!("{}:{}", path.get_host(), path.get_port())).await
+        {
+            Ok(tcp) => {
+                tcp.set_ttl(20)?;
+                tcp
+            }
+            Err(_) => return Err(Error::from(OblivionException::ConnectionRefusedError)),
+        };
+
+        let mut session = Session::new_with_header(&header, Socket::new(tcp))?;
+
+        session.handshake(0).await?;
+
         Ok(Self {
-            olps,
+            entrance: entrance.to_string(),
             path,
-            plain_text: plain_text.clone(),
-            private_key: None,
-            public_key: None,
-            session: None,
+            header,
+            session,
         })
     }
 
-    pub async fn connect(&mut self) -> Result<()> {
-        let (private_key, public_key) = generate_key_pair()?;
-        (self.private_key, self.public_key) = (Some(private_key), Some(public_key));
+    pub async fn send(&mut self, data: Vec<u8>, status_code: u32) -> Result<()> {
+        let session = &mut self.session;
 
-        let tcp =
-            match TcpStream::connect(format!("{}:{}", self.path.get_host(), self.path.get_port()))
-                .await
-            {
-                Ok(tcp) => {
-                    tcp.set_ttl(20)?;
-                    tcp
-                }
-                Err(_) => return Err(Error::from(OblivionException::ConnectionRefusedError)),
-            };
-
-        self.session = Some(Session::new_with_header(
-            &self.plain_text,
-            Socket::new(tcp),
-        )?);
-
-        let session = self.session.as_mut().unwrap();
-        session.handshake(0).await?;
-
-        Ok(())
-    }
-
-    pub async fn send(&mut self, bytes: Vec<u8>) -> Result<()> {
-        let session = self.session.as_mut().unwrap();
-        let tcp = &mut session.socket.lock().await;
-        let mut oed = OED::new(session.aes_key.clone());
-        oed.from_bytes(bytes)?;
-        oed.to_stream(tcp, 5).await?;
-        Ok(())
+        Ok(session.send(data, status_code).await?)
     }
 
     pub async fn recv(&mut self) -> Result<Response> {
-        let session = self.session.as_mut().unwrap();
-        let socket = &mut session.socket.lock().await;
+        let session = &mut self.session;
 
-        let flag = OSC::from_stream(socket).await?.status_code;
-        let content = OED::new(session.aes_key.clone())
-            .from_stream(socket, 5)
-            .await?
-            .get_data();
-        let status_code = OSC::from_stream(socket).await?.status_code;
-
-        let response = Response::new(
-            self.plain_text.clone(),
-            content,
-            self.olps.clone(),
-            status_code,
-        );
-
-        if flag == 1 {
-            socket.close().await?;
-        }
-        Ok(response)
+        Ok(session.recv().await?)
     }
 
     pub async fn close(&mut self) -> Result<()> {
-        let session = self.session.as_mut().unwrap();
+        let session = &mut self.session;
         let tcp = &mut session.socket.lock().await;
         tcp.close().await?;
         Ok(())

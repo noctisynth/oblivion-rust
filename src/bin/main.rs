@@ -42,6 +42,7 @@ fn json(_sess: Session) -> Response {
 #[async_route]
 async fn alive(mut sess: Session) -> Response {
     sess.send("test".into(), 200).await?;
+    assert_eq!(sess.recv().await?.text()?, "test");
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "结束"}),
         200,
@@ -77,16 +78,15 @@ async fn main() -> Result<()> {
         }
         "bench" => loop {
             let now = Instant::now();
-            let mut client = Client::new("CONNECT", format!("127.0.0.1:7076{}", args[2]))?;
-            client.connect().await?;
+            let mut client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
             client.recv().await?.text()?;
             client.close().await?;
             println!("执行时间: {}", now.elapsed().as_millis());
         },
         "socket" => {
-            let mut client = Client::new("CONNECT", format!("127.0.0.1:7076{}", args[2]))?;
-            client.connect().await?;
+            let mut client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
             client.recv().await?.text()?;
+            client.send("test".as_bytes().to_vec(), 200).await?;
             client.recv().await?.json()?;
             client.close().await?;
         }
