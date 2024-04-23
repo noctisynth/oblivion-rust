@@ -3,7 +3,7 @@ use anyhow::Result;
 use futures::future::BoxFuture;
 use serde_json::Value;
 
-use crate::exceptions::OblivionException;
+use crate::exceptions::Exception;
 
 #[derive(Clone)]
 pub enum BaseResponse {
@@ -58,9 +58,9 @@ impl JsonResponse {
 }
 
 impl BaseResponse {
-    pub fn as_bytes(&mut self) -> Result<Vec<u8>, OblivionException> {
+    pub fn as_bytes(&mut self) -> Result<Vec<u8>, Exception> {
         match self {
-            Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod {
+            Self::FileResponse(_, _) => Err(Exception::UnsupportedMethod {
                 method: "FileResponse".to_string(),
             }),
             Self::TextResponse(text, status_code) => {
@@ -74,9 +74,9 @@ impl BaseResponse {
         }
     }
 
-    pub fn get_status_code(&mut self) -> Result<u32, OblivionException> {
+    pub fn get_status_code(&mut self) -> Result<u32, Exception> {
         match self {
-            Self::FileResponse(_, _) => Err(OblivionException::UnsupportedMethod {
+            Self::FileResponse(_, _) => Err(Exception::UnsupportedMethod {
                 method: "FileResponse".to_string(),
             }),
             Self::TextResponse(text, status_code) => {

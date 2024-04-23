@@ -11,7 +11,7 @@ use ring::rand::{SecureRandom, SystemRandom};
 use scrypt::{scrypt, Params};
 use sha2::Sha256;
 
-use crate::exceptions::OblivionException;
+use crate::exceptions::Exception;
 
 /// Create an ECC key
 ///
@@ -22,12 +22,12 @@ use crate::exceptions::OblivionException;
 ///
 /// let (private_key, public_key) = generate_key_pair().unwrap();
 /// ```
-pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), OblivionException> {
+pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
     let private_key = EphemeralSecret::random(&mut OsRng);
     let pk_bytes = EncodedPoint::from(private_key.public_key());
     match PublicKey::from_sec1_bytes(pk_bytes.as_ref()) {
         Ok(public_key) => Ok((private_key, public_key)),
-        Err(error) => Err(OblivionException::PublicKeyInvalid { error }),
+        Err(error) => Err(Exception::PublicKeyInvalid { error }),
     }
 }
 
@@ -64,7 +64,7 @@ impl SharedKey {
             &mut aes_key,
         ) {
             Ok(()) => Ok(aes_key.to_vec()),
-            Err(error) => Err(OblivionException::InvalidOutputLen { error }.into()),
+            Err(error) => Err(Exception::InvalidOutputLen { error }.into()),
         }
     }
 

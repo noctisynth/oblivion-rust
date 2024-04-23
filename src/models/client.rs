@@ -8,7 +8,7 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crate::exceptions::OblivionException;
+use crate::exceptions::Exception;
 #[cfg(feature = "python")]
 use crate::exceptions::PyOblivionException;
 
@@ -18,7 +18,7 @@ use crate::utils::parser::OblivionPath;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(not(feature = "python"))]
-use serde_json::{from_str, Value};
+use serde_json::{from_slice, Value};
 #[cfg(feature = "python")]
 use serde_json::{json, Value};
 
@@ -66,8 +66,7 @@ impl Response {
     }
 
     pub fn json(&self) -> Result<Value> {
-        // from
-        Ok(from_str::<Value>(&self.text()?)?)
+        Ok(from_slice(&self.content)?)
     }
 }
 
@@ -141,7 +140,7 @@ impl Client {
                 tcp.set_ttl(20)?;
                 tcp
             }
-            Err(_) => return Err(Error::from(OblivionException::ConnectionRefusedError)),
+            Err(_) => return Err(Error::from(Exception::ConnectionRefusedError)),
         };
 
         let mut session = Session::new_with_header(&header, Socket::new(tcp))?;

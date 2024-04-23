@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-use crate::exceptions::OblivionException;
+use crate::exceptions::Exception;
 
 /// Packet size analysis function
 ///
@@ -25,11 +25,11 @@ use crate::exceptions::OblivionException;
 /// ```
 ///
 /// The `vec` in the above example is a `Vec<u8>` of length 39, and `length(&vec)` gets `b "0039".to_vec()`.
-pub fn length(bytes: &Vec<u8>) -> Result<[u8; 4], OblivionException> {
+pub fn length(bytes: &Vec<u8>) -> Result<[u8; 4], Exception> {
     let size = bytes.len() as u32;
 
     if size > 4096 {
-        return Err(OblivionException::DataTooLarge {
+        return Err(Exception::DataTooLarge {
             size: size as usize,
         });
     }
@@ -95,7 +95,7 @@ impl OblivionPath {
                 olps,
             })
         } else {
-            Err(Error::from(OblivionException::InvalidOblivion {
+            Err(Error::from(Exception::InvalidOblivion {
                 olps: obl_str.to_string(),
             }))
         }
@@ -168,7 +168,7 @@ pub struct OblivionRequest {
 }
 
 impl OblivionRequest {
-    pub fn new(header: &str) -> Result<Self, OblivionException> {
+    pub fn new(header: &str) -> Result<Self, Exception> {
         let plain_text = header;
         let re =
             Regex::new(r"(?P<method>\w+) (?P<olps>\S+) (?P<protocol>\w+)/(?P<version>\d+\.\d+)")
@@ -219,7 +219,7 @@ impl OblivionRequest {
                 header: header.to_string(),
             })
         } else {
-            Err(OblivionException::BadProtocol {
+            Err(Exception::BadProtocol {
                 header: header.to_string(),
             })
         }

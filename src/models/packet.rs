@@ -1,5 +1,5 @@
 //! # Oblivion Packets Encapsulation
-use crate::exceptions::OblivionException;
+use crate::exceptions::Exception;
 use crate::utils::decryptor::decrypt_bytes;
 use crate::utils::encryptor::{encrypt_bytes, encrypt_plaintext};
 use crate::utils::gear::Socket;
@@ -84,7 +84,7 @@ impl<'a> OKE<'a> {
     pub fn new(
         private_key: Option<&'a EphemeralSecret>,
         public_key: Option<PublicKey>,
-    ) -> Result<Self, OblivionException> {
+    ) -> Result<Self, Exception> {
         Ok(Self {
             public_key,
             private_key,
@@ -179,7 +179,7 @@ impl OED {
     pub fn from_json_or_string(
         &mut self,
         json_or_str: String,
-    ) -> Result<&mut Self, OblivionException> {
+    ) -> Result<&mut Self, Exception> {
         let (encrypted_data, tag, nonce) =
             encrypt_plaintext(json_or_str, &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
@@ -187,7 +187,7 @@ impl OED {
         Ok(self)
     }
 
-    pub fn from_dict(&mut self, dict: Value) -> Result<&mut Self, OblivionException> {
+    pub fn from_dict(&mut self, dict: Value) -> Result<&mut Self, Exception> {
         let (encrypted_data, tag, nonce) =
             encrypt_plaintext(dict.to_string(), &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
@@ -200,7 +200,7 @@ impl OED {
         Ok(self)
     }
 
-    pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, OblivionException> {
+    pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, Exception> {
         let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
             (Some(encrypted_data), Some(tag), Some(nonce));
@@ -266,7 +266,7 @@ impl OED {
         }
         if !ack {
             stream.close().await?;
-            return Err(Error::from(OblivionException::AllAttemptsRetryFailed {
+            return Err(Error::from(Exception::AllAttemptsRetryFailed {
                 times: total_attemps,
             }));
         }
@@ -307,7 +307,7 @@ impl OED {
 
         if !ack {
             stream.close().await?;
-            return Err(Error::from(OblivionException::AllAttemptsRetryFailed {
+            return Err(Error::from(Exception::AllAttemptsRetryFailed {
                 times: total_attemps,
             }));
         }

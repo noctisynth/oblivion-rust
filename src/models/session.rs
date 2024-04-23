@@ -5,6 +5,7 @@ use chrono::{DateTime, Local};
 use p256::{ecdh::EphemeralSecret, PublicKey};
 use tokio::sync::{Mutex, RwLock};
 
+use crate::exceptions::Exception;
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::{length, OblivionRequest};
@@ -96,6 +97,10 @@ impl Session {
     }
 
     pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
+        if self.closed().await {
+            return Err(Exception::ConnectionClosed.into());
+        }
+
         let socket = &mut self.socket.lock().await;
 
         OSC::from_u32(0).to_stream(socket).await?;
@@ -108,6 +113,10 @@ impl Session {
     }
 
     pub async fn recv(&self) -> Result<Response> {
+        if self.closed().await {
+            return Err(Exception::ConnectionClosed.into());
+        }
+
         let socket = &mut self.socket.lock().await;
 
         let flag = OSC::from_stream(socket).await?.status_code;
@@ -125,9 +134,13 @@ impl Session {
     }
 
     pub async fn close(&self) -> Result<()> {
-        let socket = &mut self.socket.lock().await;
-        *self.closed.write().await = true;
-        socket.close().await
+        if !self.closed().await {
+            let socket = &mut self.socket.lock().await;
+            *self.closed.write().await = true;
+            socket.close().await
+        } else {
+            Ok(())
+        }
     }
 
     pub async fn closed(&self) -> bool {

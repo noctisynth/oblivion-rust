@@ -9,7 +9,7 @@ use thiserror::Error;
 /// ## Oblivion exception iterator
 /// Use an iterator as the type of exception returned by a function.
 #[derive(Error, Debug, Clone, PartialEq)]
-pub enum OblivionException {
+pub enum Exception {
     #[error("Request not yet pre-processed")]
     ErrorNotPrepared,
     #[error("Incorrect protocol header: {header}")]
@@ -38,6 +38,8 @@ pub enum OblivionException {
     EncryptError { error: Unspecified },
     #[error("Exception while decrypting: {error:?}")]
     DecryptError { error: Unspecified },
+    #[error("Trying to read or write a closed connection.")]
+    ConnectionClosed,
 }
 
 #[cfg(feature = "python")]
