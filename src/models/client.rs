@@ -1,6 +1,12 @@
 //! # Oblivion Client
+use std::{collections::VecDeque, sync::Arc};
+
 use anyhow::{Error, Result};
-use tokio::net::TcpStream;
+use tokio::{
+    net::TcpStream,
+    sync::{Mutex, RwLock},
+    task::JoinHandle,
+};
 
 use crate::exceptions::OblivionException;
 #[cfg(feature = "python")]
@@ -20,13 +26,13 @@ use super::session::Session;
 
 #[cfg_attr(feature = "python", pyclass)]
 #[derive(Debug, Default)]
-pub struct Response<'a> {
+pub struct Response {
     #[cfg_attr(feature = "python", pyo3(get))]
-    pub header: Option<&'a str>,
+    pub header: Option<String>,
     #[cfg_attr(feature = "python", pyo3(get))]
     pub content: Vec<u8>,
     #[cfg_attr(feature = "python", pyo3(get))]
-    pub entrance: Option<&'a str>,
+    pub entrance: Option<String>,
     #[cfg_attr(feature = "python", pyo3(get))]
     pub status_code: u32,
     #[cfg_attr(feature = "python", pyo3(get))]
@@ -34,11 +40,11 @@ pub struct Response<'a> {
 }
 
 #[cfg(not(feature = "python"))]
-impl<'a> Response<'a> {
+impl Response {
     pub fn new(
-        header: Option<&'a str>,
+        header: Option<String>,
         content: Vec<u8>,
-        entrance: Option<&'a str>,
+        entrance: Option<String>,
         status_code: u32,
         flag: u32,
     ) -> Self {
@@ -55,16 +61,17 @@ impl<'a> Response<'a> {
         self.status_code < 400
     }
 
-    pub fn text(&mut self) -> Result<String> {
+    pub fn text(&self) -> Result<String> {
         Ok(String::from_utf8(self.content.to_vec())?)
     }
 
-    pub fn json(&mut self) -> Result<Value> {
+    pub fn json(&self) -> Result<Value> {
+        // from
         Ok(from_str::<Value>(&self.text()?)?)
     }
 }
 
-impl<'a> PartialEq for Response<'a> {
+impl PartialEq for Response {
     fn eq(&self, other: &Self) -> bool {
         if self.entrance.is_none() {
             self.header == other.header
@@ -78,8 +85,8 @@ impl<'a> PartialEq for Response<'a> {
             } else {
                 self.header == other.header
                     && self.content == other.content
-                    && self.entrance.unwrap().trim_end_matches("/")
-                        == other.entrance.unwrap().trim_end_matches("/")
+                    && self.entrance.as_ref().unwrap().trim_end_matches("/")
+                        == other.entrance.as_ref().unwrap().trim_end_matches("/")
                     && self.status_code == other.status_code
                     && self.flag == other.flag
             }
@@ -119,7 +126,8 @@ pub struct Client {
     pub entrance: String,
     pub path: OblivionPath,
     pub header: String,
-    pub session: Session,
+    pub session: Arc<RwLock<Session>>,
+    pub responses: Arc<Mutex<VecDeque<Response>>>,
 }
 
 impl Client {
@@ -144,26 +152,67 @@ impl Client {
             entrance: entrance.to_string(),
             path,
             header,
-            session,
+            session: Arc::new(RwLock::new(session)),
+            responses: Arc::new(Mutex::new(VecDeque::new())),
         })
     }
 
-    pub async fn send(&mut self, data: Vec<u8>, status_code: u32) -> Result<()> {
-        let session = &mut self.session;
-
+    pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
+        let session = self.session.read().await;
         Ok(session.send(data, status_code).await?)
     }
 
-    pub async fn recv(&mut self) -> Result<Response> {
-        let session = &mut self.session;
+    pub async fn send_json(&self, json: Value, status_code: u32) -> Result<()> {
+        let session = self.session.read().await;
+        Ok(session
+            .send(json.to_string().into_bytes(), status_code)
+            .await?)
+    }
 
+    pub async fn recv(&self) -> Result<Response> {
+        let session = self.session.read().await;
         Ok(session.recv().await?)
     }
 
-    pub async fn close(&mut self) -> Result<()> {
-        let session = &mut self.session;
-        let tcp = &mut session.socket.lock().await;
-        tcp.close().await?;
+    pub async fn listen(&self) -> Result<JoinHandle<Result<()>>> {
+        let session = Arc::clone(&self.session);
+        let responses = Arc::clone(&self.responses);
+        Ok(tokio::spawn(async move {
+            loop {
+                let rsess = session.read().await;
+                let mut wres = responses.lock().await;
+                if !rsess.closed().await {
+                    match rsess.recv().await {
+                        Ok(res) => {
+                            if &res.flag == &1 {
+                                wres.push_back(res);
+                                break;
+                            }
+                            wres.push_back(res);
+                        }
+                        Err(e) => {
+                            if !rsess.closed().await {
+                                eprintln!("{:?}", e);
+                                rsess.close().await?;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            Ok(())
+        }))
+    }
+
+    pub async fn pop(&self) -> Option<Response> {
+        let responses = Arc::clone(&self.responses);
+        let mut wres = responses.lock().await;
+        wres.pop_front()
+    }
+
+    pub async fn close(&self) -> Result<()> {
+        let session = self.session.read().await;
+        session.close().await?;
         Ok(())
     }
 }

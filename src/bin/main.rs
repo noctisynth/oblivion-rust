@@ -40,7 +40,7 @@ fn json(_sess: Session) -> Response {
 }
 
 #[async_route]
-async fn alive(mut sess: Session) -> Response {
+async fn alive(sess: Session) -> Response {
     sess.send("test".into(), 200).await?;
     assert_eq!(sess.recv().await?.text()?, "test");
     Ok(BaseResponse::JsonResponse(
@@ -78,13 +78,13 @@ async fn main() -> Result<()> {
         }
         "bench" => loop {
             let now = Instant::now();
-            let mut client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
+            let client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
             client.recv().await?.text()?;
             client.close().await?;
             println!("执行时间: {}", now.elapsed().as_millis());
         },
         "socket" => {
-            let mut client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
+            let client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
             client.recv().await?.text()?;
             client.send("test".as_bytes().to_vec(), 200).await?;
             client.recv().await?.json()?;
@@ -95,9 +95,9 @@ async fn main() -> Result<()> {
 
             router.route(RoutePath::new("/handler", RouteType::Path), handler);
 
-            path_route!(&mut router, "/welcome" => welcome);
-            path_route!(&mut router, "/json" => json);
-            path_route!(&mut router, "/alive" => alive);
+            path_route!(router, "/welcome" => welcome);
+            path_route!(router, "/json" => json);
+            path_route!(router, "/alive" => alive);
 
             let mut server = Server::new("0.0.0.0", 7076, router);
             server.run().await?;

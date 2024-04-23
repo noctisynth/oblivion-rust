@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Local};
 use p256::{ecdh::EphemeralSecret, PublicKey};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
@@ -20,6 +20,7 @@ pub struct Session {
     pub request_time: DateTime<Local>,
     pub request: Option<OblivionRequest>,
     pub socket: Arc<Mutex<Socket>>,
+    closed: Arc<RwLock<bool>>,
 }
 
 impl Session {
@@ -33,6 +34,7 @@ impl Session {
             request_time: Local::now(),
             request: None,
             socket: Arc::new(Mutex::new(socket)),
+            closed: Arc::new(RwLock::new(false)),
         })
     }
 
@@ -46,6 +48,7 @@ impl Session {
             request_time: Local::now(),
             request: None,
             socket: Arc::new(Mutex::new(socket)),
+            closed: Arc::new(RwLock::new(false)),
         })
     }
 
@@ -92,7 +95,7 @@ impl Session {
         Ok(())
     }
 
-    pub async fn send(&mut self, data: Vec<u8>, status_code: u32) -> Result<()> {
+    pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
         let socket = &mut self.socket.lock().await;
 
         OSC::from_u32(0).to_stream(socket).await?;
@@ -104,7 +107,7 @@ impl Session {
         Ok(())
     }
 
-    pub async fn recv(&mut self) -> Result<Response> {
+    pub async fn recv(&self) -> Result<Response> {
         let socket = &mut self.socket.lock().await;
 
         let flag = OSC::from_stream(socket).await?.status_code;
@@ -119,6 +122,16 @@ impl Session {
             socket.close().await?;
         }
         Ok(response)
+    }
+
+    pub async fn close(&self) -> Result<()> {
+        let socket = &mut self.socket.lock().await;
+        *self.closed.write().await = true;
+        socket.close().await
+    }
+
+    pub async fn closed(&self) -> bool {
+        *self.closed.read().await
     }
 
     pub fn header(&mut self) -> String {
