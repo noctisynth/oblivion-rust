@@ -6,40 +6,12 @@ use crate::utils::gear::Socket;
 use crate::utils::generator::{generate_random_salt, SharedKey};
 use crate::utils::parser::length;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 use p256::ecdh::EphemeralSecret;
 use p256::PublicKey;
-use rand::Rng;
 use serde_json::Value;
 
 const STOP_FLAG: [u8; 4] = u32::MIN.to_be_bytes();
-
-pub struct ACK {
-    sequence: u32,
-}
-
-impl ACK {
-    pub fn new() -> Self {
-        Self {
-            sequence: rand::thread_rng().gen_range(1000..=9999),
-        }
-    }
-
-    pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<Self> {
-        Ok(Self {
-            sequence: stream.recv_u32().await?,
-        })
-    }
-
-    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<()> {
-        stream.send(&self.plain_data()).await?;
-        Ok(())
-    }
-
-    pub fn plain_data(&mut self) -> [u8; 4] {
-        self.sequence.to_be_bytes()
-    }
-}
 
 pub struct OSC {
     pub status_code: u32,
@@ -50,12 +22,12 @@ impl OSC {
         Self { status_code }
     }
 
-    pub async fn from_stream(stream: &mut Socket) -> Result<Self> {
+    pub async fn from_stream(stream: &Socket) -> Result<Self> {
         let status_code = stream.recv_u32().await?;
         Ok(Self { status_code })
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<()> {
+    pub async fn to_stream(&mut self, stream: &Socket) -> Result<()> {
         stream.send(&self.plain_data()).await?;
         Ok(())
     }
@@ -99,7 +71,7 @@ impl<'a> OKE<'a> {
         Ok(self)
     }
 
-    pub async fn from_stream(&mut self, stream: &mut Socket) -> Result<&mut Self> {
+    pub async fn from_stream(&mut self, stream: &Socket) -> Result<&mut Self> {
         let remote_public_key_length = stream.recv_usize().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes)?);
@@ -111,7 +83,7 @@ impl<'a> OKE<'a> {
         Ok(self)
     }
 
-    pub async fn from_stream_with_salt(&mut self, stream: &mut Socket) -> Result<&mut Self> {
+    pub async fn from_stream_with_salt(&mut self, stream: &Socket) -> Result<&mut Self> {
         let remote_public_key_length = stream.recv_usize().await?;
         let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
         self.remote_public_key = Some(PublicKey::from_sec1_bytes(&remote_public_key_bytes)?);
@@ -125,12 +97,12 @@ impl<'a> OKE<'a> {
         Ok(self)
     }
 
-    pub async fn to_stream(&mut self, stream: &mut Socket) -> Result<()> {
+    pub async fn to_stream(&mut self, stream: &Socket) -> Result<()> {
         stream.send(&self.plain_data()?).await?;
         Ok(())
     }
 
-    pub async fn to_stream_with_salt(&mut self, stream: &mut Socket) -> Result<()> {
+    pub async fn to_stream_with_salt(&mut self, stream: &Socket) -> Result<()> {
         stream.send(&self.plain_data()?).await?;
         stream.send(&self.plain_salt()?).await?;
         Ok(())
@@ -176,10 +148,7 @@ impl OED {
         }
     }
 
-    pub fn from_json_or_string(
-        &mut self,
-        json_or_str: String,
-    ) -> Result<&mut Self, Exception> {
+    pub fn from_json_or_string(&mut self, json_or_str: String) -> Result<&mut Self, Exception> {
         let (encrypted_data, tag, nonce) =
             encrypt_plaintext(json_or_str, &self.aes_key.as_ref().unwrap())?;
         (self.encrypted_data, self.tag, self.nonce) =
@@ -207,110 +176,63 @@ impl OED {
         Ok(self)
     }
 
-    pub async fn from_stream(
-        &mut self,
-        stream: &mut Socket,
-        total_attemps: u32,
-    ) -> Result<&mut Self> {
-        let mut attemp = 0;
-        let mut ack = false;
+    pub async fn from_stream(&mut self, stream: &Socket) -> Result<&mut Self> {
+        let len_nonce = stream.recv_usize().await?;
+        let len_tag = stream.recv_usize().await?;
 
-        while attemp < total_attemps {
-            let mut ack_packet = ACK::new();
-            let mut ack_packet = ack_packet.from_stream(stream).await?;
+        self.nonce = Some(stream.recv(len_nonce).await?);
+        self.tag = Some(stream.recv(len_tag).await?);
 
-            let len_nonce = stream.recv_usize().await?;
-            let len_tag = stream.recv_usize().await?;
+        let mut encrypted_data: Vec<u8> = Vec::new();
+        self.chunk_count = 0;
 
-            self.nonce = Some(stream.recv(len_nonce).await?);
-            self.tag = Some(stream.recv(len_tag).await?);
-
-            let mut encrypted_data: Vec<u8> = Vec::new();
-            self.chunk_count = 0;
-
-            loop {
-                let prefix = stream.recv_usize().await?;
-                if prefix == 0 {
-                    self.encrypted_data = Some(encrypted_data);
-                    break;
-                }
-
-                let mut add: Vec<u8> = Vec::new();
-                while add.len() != prefix {
-                    add.extend(stream.recv(prefix - add.len()).await?)
-                }
-
-                encrypted_data.extend(add);
-                self.chunk_count += 1;
-            }
-
-            match decrypt_bytes(
-                self.encrypted_data.clone().unwrap(),
-                self.tag.as_ref().unwrap(),
-                self.aes_key.as_ref().unwrap(),
-                self.nonce.as_ref().unwrap(),
-            ) {
-                Ok(data) => {
-                    self.data = Some(data);
-                    ack_packet.to_stream(stream).await?;
-                    ack = true;
-                    break;
-                }
-                Err(error) => {
-                    stream.send(&STOP_FLAG).await?;
-                    eprintln!("An error occured: {error}\nRetried {attemp} times.");
-                    attemp += 1;
-                    continue;
-                }
-            }
-        }
-        if !ack {
-            stream.close().await?;
-            return Err(Error::from(Exception::AllAttemptsRetryFailed {
-                times: total_attemps,
-            }));
-        }
-
-        Ok(self)
-    }
-
-    pub async fn to_stream(&mut self, stream: &mut Socket, total_attemps: u32) -> Result<()> {
-        let attemp = 0;
-        let mut ack = false;
-
-        while attemp <= total_attemps {
-            let mut ack_packet = ACK::new();
-            ack_packet.to_stream(stream).await?;
-
-            stream.send(&self.plain_data()?).await?;
-
-            self.chunk_count = 0;
-            let encrypted_data = self.encrypted_data.as_ref().unwrap();
-            let mut remaining_data = &encrypted_data[..];
-            while !remaining_data.is_empty() {
-                let chunk_size = remaining_data.len().min(2048);
-
-                let chunk_length = chunk_size as u32;
-
-                stream.send(&chunk_length.to_be_bytes()).await?;
-                stream.send(&remaining_data[..chunk_size]).await?;
-
-                remaining_data = &remaining_data[chunk_size..];
-            }
-            stream.send(&STOP_FLAG).await?;
-
-            if ack_packet.sequence == stream.recv_u32().await? {
-                ack = true;
+        loop {
+            let prefix = stream.recv_usize().await?;
+            if prefix == 0 {
+                self.encrypted_data = Some(encrypted_data);
                 break;
             }
+
+            let mut add: Vec<u8> = Vec::new();
+            while add.len() != prefix {
+                add.extend(stream.recv(prefix - add.len()).await?)
+            }
+
+            encrypted_data.extend(add);
+            self.chunk_count += 1;
         }
 
-        if !ack {
-            stream.close().await?;
-            return Err(Error::from(Exception::AllAttemptsRetryFailed {
-                times: total_attemps,
-            }));
+        match decrypt_bytes(
+            self.encrypted_data.clone().unwrap(),
+            self.tag.as_ref().unwrap(),
+            self.aes_key.as_ref().unwrap(),
+            self.nonce.as_ref().unwrap(),
+        ) {
+            Ok(data) => {
+                self.data = Some(data);
+                Ok(self)
+            }
+            Err(error) => Err(Exception::DecryptError { error }.into()),
         }
+    }
+
+    pub async fn to_stream(&mut self, stream: &Socket) -> Result<()> {
+        stream.send(&self.plain_data()?).await?;
+
+        self.chunk_count = 0;
+        let encrypted_data = self.encrypted_data.as_ref().unwrap();
+        let mut remaining_data = &encrypted_data[..];
+        while !remaining_data.is_empty() {
+            let chunk_size = remaining_data.len().min(2048);
+
+            let chunk_length = chunk_size as u32;
+
+            stream.send(&chunk_length.to_be_bytes()).await?;
+            stream.send(&remaining_data[..chunk_size]).await?;
+
+            remaining_data = &remaining_data[chunk_size..];
+        }
+        stream.send(&STOP_FLAG).await?;
 
         Ok(())
     }

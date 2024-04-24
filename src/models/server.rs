@@ -13,45 +13,53 @@ use super::packet::{OED, OSC};
 use super::router::Router;
 use super::session::Session;
 
-async fn _handle(router: &mut Router, mut socket: Socket, peer: SocketAddr) -> Result<String> {
-    socket.set_ttl(20)?;
-
-    let mut session = Session::new(socket)?;
+async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result<()> {
+    stream.set_ttl(20)?;
+    let mut session = Session::new(Socket::new(stream))?;
 
     if let Err(error) = session.handshake(1).await {
         eprintln!(
             "{} -> [{}] \"{}\" {}",
             peer.ip().to_string().cyan(),
             Local::now().format("%d/%m/%Y %H:%M:%S"),
-            "CONNECT".yellow(),
+            "CONNECT - Oblivion/2.0".yellow(),
             "500".red()
         );
-        return Err(Error::from(error));
+        eprintln!("{}", error.to_string().bright_red());
+        return Ok(());
     }
 
     let header = session.header();
     let ip_addr = session.get_ip();
     let aes_key = session.aes_key.clone().unwrap();
 
-    let arc_socket = Arc::clone(&session.socket);
+    println!(
+        "{} -> [{}] \"{}\" {}",
+        ip_addr.cyan(),
+        Local::now().format("%d/%m/%Y %H:%M:%S"),
+        header.green(),
+        "OK".cyan()
+    );
+
+    let socket = Arc::clone(&session.socket);
 
     let mut route = router.get_handler(&session.request.as_ref().unwrap().olps)?;
-    let mut callback = route.get_handler()(session).await?;
+    let callback = route.get_handler()(session).await?;
 
     let status_code = callback.get_status_code()?;
 
-    let mut socket = arc_socket.lock().await;
-    OSC::from_u32(1).to_stream(&mut socket).await?;
+    OSC::from_u32(1).to_stream(&socket).await?;
     OED::new(Some(aes_key))
         .from_bytes(callback.as_bytes()?)?
-        .to_stream(&mut socket, 5)
+        .to_stream(&socket)
         .await?;
     OSC::from_u32(callback.get_status_code()?)
-        .to_stream(&mut socket)
+        .to_stream(&socket)
         .await?;
+    socket.close().await?;
 
-    let display = format!(
-        "{} -> [{}] \"{}\" {}",
+    println!(
+        "{} <- [{}] \"{}\" {}",
         ip_addr.cyan(),
         Local::now().format("%d/%m/%Y %H:%M:%S"),
         header.green(),
@@ -64,17 +72,20 @@ async fn _handle(router: &mut Router, mut socket: Socket, peer: SocketAddr) -> R
         }
     );
 
-    Ok(display)
+    Ok(())
 }
 
 pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
-    let socket = Socket::new(stream);
-    let mut router = router;
-    match _handle(&mut router, socket, peer).await {
-        Ok(display) => {
-            println!("{}", display)
-        }
+    match _handle(&router, stream, peer).await {
+        Ok(()) => {}
         Err(error) => {
+            eprintln!(
+                "{} <-> [{}] \"{}\" {}",
+                peer.ip().to_string().cyan(),
+                Local::now().format("%d/%m/%Y %H:%M:%S"),
+                "CONNECT - Oblivion/2.0".yellow(),
+                "501".red()
+            );
             eprintln!("{}", error.to_string().bright_red())
         }
     }
@@ -96,7 +107,7 @@ impl Server {
         }
     }
 
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&self) -> Result<()> {
         println!("Performing system checks...\n");
 
         let address = format!("{}:{}", self.host, self.port);

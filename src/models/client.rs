@@ -2,11 +2,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use anyhow::{Error, Result};
-use tokio::{
-    net::TcpStream,
-    sync::{Mutex, RwLock},
-    task::JoinHandle,
-};
+use tokio::{net::TcpStream, sync::Mutex, task::JoinHandle};
 
 use crate::exceptions::Exception;
 #[cfg(feature = "python")]
@@ -125,7 +121,7 @@ pub struct Client {
     pub entrance: String,
     pub path: OblivionPath,
     pub header: String,
-    pub session: Arc<RwLock<Session>>,
+    pub session: Arc<Session>,
     pub responses: Arc<Mutex<VecDeque<Response>>>,
 }
 
@@ -151,26 +147,21 @@ impl Client {
             entrance: entrance.to_string(),
             path,
             header,
-            session: Arc::new(RwLock::new(session)),
+            session: Arc::new(session),
             responses: Arc::new(Mutex::new(VecDeque::new())),
         })
     }
 
     pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
-        let session = self.session.read().await;
-        Ok(session.send(data, status_code).await?)
+        Ok(self.session.send(data, status_code).await?)
     }
 
     pub async fn send_json(&self, json: Value, status_code: u32) -> Result<()> {
-        let session = self.session.read().await;
-        Ok(session
-            .send(json.to_string().into_bytes(), status_code)
-            .await?)
+        Ok(self.session.send_json(json, status_code).await?)
     }
 
     pub async fn recv(&self) -> Result<Response> {
-        let session = self.session.read().await;
-        Ok(session.recv().await?)
+        Ok(self.session.recv().await?)
     }
 
     pub async fn listen(&self) -> Result<JoinHandle<Result<()>>> {
@@ -178,10 +169,9 @@ impl Client {
         let responses = Arc::clone(&self.responses);
         Ok(tokio::spawn(async move {
             loop {
-                let rsess = session.read().await;
                 let mut wres = responses.lock().await;
-                if !rsess.closed().await {
-                    match rsess.recv().await {
+                if !session.closed().await {
+                    match session.recv().await {
                         Ok(res) => {
                             if &res.flag == &1 {
                                 wres.push_back(res);
@@ -190,9 +180,9 @@ impl Client {
                             wres.push_back(res);
                         }
                         Err(e) => {
-                            if !rsess.closed().await {
+                            if !session.closed().await {
                                 eprintln!("{:?}", e);
-                                rsess.close().await?;
+                                session.close().await?;
                             }
                             break;
                         }
@@ -210,8 +200,7 @@ impl Client {
     }
 
     pub async fn close(&self) -> Result<()> {
-        let session = self.session.read().await;
-        session.close().await?;
+        self.session.close().await?;
         Ok(())
     }
 }

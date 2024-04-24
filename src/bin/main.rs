@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
             path_route!(router, "/json" => json);
             path_route!(router, "/alive" => alive);
 
-            let mut server = Server::new("0.0.0.0", 7076, router);
+            let server = Server::new("0.0.0.0", 7076, router);
             server.run().await?;
         }
         _ => {
