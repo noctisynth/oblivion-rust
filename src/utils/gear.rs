@@ -38,7 +38,7 @@ impl<'a> AbsoluteNonceSequence<'a> {
 #[derive(Debug)]
 pub struct Socket {
     pub reader: Mutex<OwnedReadHalf>,
-    pub writer: Mutex<OwnedWriteHalf>, // pub tcp: TcpStream,
+    pub writer: Mutex<OwnedWriteHalf>,
 }
 
 impl Socket {
