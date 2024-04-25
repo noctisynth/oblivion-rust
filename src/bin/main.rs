@@ -1,20 +1,18 @@
 use anyhow::Result;
 use oblivion::models::client::Client;
-use oblivion::models::render::{BaseResponse, Response};
+use oblivion::models::render::BaseResponse;
 use oblivion::models::router::{RoutePath, RouteType, Router};
 use oblivion::models::server::Server;
 use oblivion::models::session::Session;
 use oblivion::path_route;
-use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
+use oblivion::types::server;
 use oblivion_codegen::async_route;
-#[cfg(not(feature = "unsafe"))]
-use ring::agreement::{UnparsedPublicKey, X25519};
 use serde_json::json;
 use std::env::args;
 use std::time::Instant;
 
 #[async_route]
-fn handler(_sess: Session) -> Response {
+fn handler(_sess: Session) -> server::Result {
     Ok(BaseResponse::TextResponse(
         "每一个人都应该拥有守护信息与获得真实信息的神圣权利, 任何与之对抗的都是我们的敌人"
             .to_string(),
@@ -23,7 +21,7 @@ fn handler(_sess: Session) -> Response {
 }
 
 #[async_route]
-fn welcome(mut sess: Session) -> Response {
+fn welcome(mut sess: Session) -> server::Result {
     Ok(BaseResponse::TextResponse(
         format!(
             "欢迎进入信息绝对安全区, 来自[{}]的朋友",
@@ -34,7 +32,7 @@ fn welcome(mut sess: Session) -> Response {
 }
 
 #[async_route]
-fn json(_sess: Session) -> Response {
+fn json(_sess: Session) -> server::Result {
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "只身堕入极暗之永夜, 以期再世涅槃之阳光"}),
         200,
@@ -42,7 +40,7 @@ fn json(_sess: Session) -> Response {
 }
 
 #[async_route]
-async fn alive(sess: Session) -> Response {
+async fn alive(sess: Session) -> server::Result {
     sess.send("test".into(), 200).await?;
     assert_eq!(sess.recv().await?.text()?, "test");
     Ok(BaseResponse::JsonResponse(
@@ -61,35 +59,6 @@ async fn main() -> Result<()> {
         args.push("/welcome".to_string());
     }
     match args[1].as_str() {
-        "keygen" => {
-            let now = Instant::now();
-            generate_key_pair()?;
-            println!("执行时间: {}", now.elapsed().as_millis());
-        }
-        "dh" => {
-            let now = Instant::now();
-            let (pr, pu) = generate_key_pair()?;
-            let (alice_pr, alice_pu) = generate_key_pair()?;
-            let salt = generate_random_salt();
-            #[cfg(feature = "unsafe")]
-            let mut shared_bob = SharedKey::new(&pr, &alice_pu);
-            #[cfg(not(feature = "unsafe"))]
-            let mut shared_bob = SharedKey::new(
-                pr,
-                &UnparsedPublicKey::new(&X25519, alice_pu.as_ref().to_vec()),
-            );
-            #[cfg(feature = "unsafe")]
-            let mut shared_alice = SharedKey::new(&alice_pr, &pu);
-            #[cfg(not(feature = "unsafe"))]
-            let mut shared_alice = SharedKey::new(
-                alice_pr,
-                &UnparsedPublicKey::new(&X25519, pu.as_ref().to_vec()),
-            );
-            let bob_key = shared_bob.hkdf(&salt)?;
-            let alice_key = shared_alice.hkdf(&salt)?;
-            assert_eq!(bob_key, alice_key);
-            println!("执行时间: {}", now.elapsed().as_millis());
-        }
         "bench" => loop {
             let now = Instant::now();
             let client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;

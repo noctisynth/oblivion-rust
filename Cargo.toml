@@ -33,6 +33,9 @@ pyo3 = { version = "0.20", optional = true }
 elliptic-curve = { version = "0.13", features = ["sec1"], optional = true }
 p256 = { version = "0.13", features = ["ecdh"], optional = true }
 
+[dev-dependencies]
+criterion = { version = "0.4", features = ["async_tokio", "html_reports"] }
+
 [lib]
 name = "oblivion"
 
@@ -40,8 +43,16 @@ name = "oblivion"
 name = "main"
 
 [profile.release]
-lto = true
+panic = "abort" # Strip expensive panic clean-up logic
+codegen-units = 1 # Compile crates one after another so the compiler can optimize better
+lto = true # Enables link to optimizations
+opt-level = 3
+strip = true # Remove debug symbols
 
 [features]
 unsafe = ["elliptic-curve", "p256"]
 python = ["pyo3"]
+
+[[bench]]
+name = "keygen"
+harness = false
