@@ -83,7 +83,7 @@ impl Session {
         #[cfg(not(feature = "unsafe"))]
         let public_key = UnparsedPublicKey::new(&X25519, self.public_key.as_ref().to_vec());
         #[cfg(not(feature = "unsafe"))]
-        let mut oke = OKE::new(self.private_key.take(), Some(public_key))?;
+        let mut oke = OKE::new(self.private_key.take(), public_key);
         oke.from_stream_with_salt(&socket).await?;
         self.aes_key = Some(oke.get_aes_key());
         oke.to_stream(&socket).await?;
@@ -103,7 +103,7 @@ impl Session {
         #[cfg(not(feature = "unsafe"))]
         let public_key = UnparsedPublicKey::new(&X25519, self.public_key.as_ref().to_vec());
         #[cfg(not(feature = "unsafe"))]
-        let mut oke = OKE::new(self.private_key.take(), Some(public_key))?;
+        let mut oke = OKE::new(self.private_key.take(), public_key);
         oke.to_stream_with_salt(&socket).await?;
         oke.from_stream(&socket).await?;
 
@@ -132,7 +132,7 @@ impl Session {
         let socket = &self.socket;
 
         OSC::from_u32(0).to_stream(socket).await?;
-        OED::new(self.aes_key.clone())
+        OED::new(self.aes_key.clone().unwrap())
             .from_bytes(data)?
             .to_stream(socket)
             .await?;
@@ -157,7 +157,7 @@ impl Session {
         let socket = &self.socket;
 
         let flag = OSC::from_stream(socket).await?.status_code;
-        let content = OED::new(self.aes_key.clone())
+        let content = OED::new(self.aes_key.clone().unwrap())
             .from_stream(socket)
             .await?
             .get_data();

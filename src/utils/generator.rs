@@ -30,8 +30,6 @@ use crate::exceptions::Exception;
 /// ```
 #[cfg(not(feature = "unsafe"))]
 pub fn generate_key_pair() -> Result<(EphemeralPrivateKey, PublicKey), Exception> {
-    // let private_key = EphemeralSecret::random(&mut OsRng);
-    // let public_key = private_key.public_key();
     let rng = SystemRandom::new();
     let private_key = EphemeralPrivateKey::generate(&X25519, &rng).unwrap();
     let public_key = private_key.compute_public_key().unwrap();
@@ -52,7 +50,7 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 ///
 /// let salt = generate_random_salt();
 /// let (private_key, public_key) = generate_key_pair().unwrap();
-/// 
+///
 /// #[cfg(feature = "unsafe")]
 /// let mut shared_key = SharedKey::new(&private_key, &public_key);
 ///
@@ -77,9 +75,13 @@ impl SharedKey {
     }
 
     #[cfg(not(feature = "unsafe"))]
-    pub fn new(private_key: EphemeralPrivateKey, public_key: &UnparsedPublicKey<Vec<u8>>) -> Self {
-        Self {
-            shared_key: agree_ephemeral(private_key, public_key, |key| key.to_vec()).unwrap(),
+    pub fn new(
+        private_key: EphemeralPrivateKey,
+        public_key: &UnparsedPublicKey<Vec<u8>>,
+    ) -> Result<Self> {
+        match agree_ephemeral(private_key, public_key, |key| key.to_vec()) {
+            Ok(shared_key) => Ok(Self { shared_key }),
+            Err(error) => Err(Exception::DecryptError { error }.into()),
         }
     }
 

@@ -25,10 +25,10 @@ use crate::exceptions::Exception;
 /// ```
 ///
 /// The `vec` in the above example is a `Vec<u8>` of length 39, and `length(&vec)` gets `b "0039".to_vec()`.
-pub fn length(bytes: &Vec<u8>) -> Result<[u8; 4], Exception> {
+pub fn length(bytes: &[u8]) -> Result<[u8; 4], Exception> {
     let size = bytes.len() as u32;
 
-    if size > 4096 {
+    if size > 2048 {
         return Err(Exception::DataTooLarge {
             size: size as usize,
         });

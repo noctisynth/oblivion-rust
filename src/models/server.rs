@@ -50,7 +50,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
     let status_code = callback.get_status_code()?;
 
     OSC::from_u32(1).to_stream(&socket).await?;
-    OED::new(Some(aes_key))
+    OED::new(aes_key)
         .from_bytes(callback.as_bytes()?)?
         .to_stream(&socket)
         .await?;
