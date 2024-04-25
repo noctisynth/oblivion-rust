@@ -9,21 +9,26 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+
+# Cryptography Algorithms
 rand = "0.8"
 ring = "0.17"
 sha2 = "0.10"
 scrypt = "0.11"
+hkdf = "0.12.4"
+
+# Utils
+oblivion-codegen = { path = "oblivion-codegen" }
 regex = "1"
 serde_json = "1"
-oblivion-codegen = { path = "oblivion-codegen" }
 proc-macro2 = "1"
 futures = "0.3"
 thiserror = "1"
 anyhow = "1.0"
 colored = "2.1"
 chrono = "0.4"
-hkdf = "0.12.4"
 
+# Optional
 pyo3 = { version = "0.20", optional = true }
 elliptic-curve = { version = "0.13", features = ["sec1"], optional = true }
 p256 = { version = "0.13", features = ["ecdh"], optional = true }
