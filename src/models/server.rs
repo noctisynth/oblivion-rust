@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::utils::gear::Socket;
+use crate::VERSION;
 
 use anyhow::{Error, Result};
 use chrono::Local;
@@ -137,6 +138,19 @@ impl Server {
             }
             std::process::exit(0);
         });
+
+        #[cfg(feature = "unsafe")]
+        println!(
+            "Oblivion version {}, using '{}'",
+            VERSION.bright_yellow(),
+            "p256".bright_red()
+        );
+        #[cfg(not(feature = "unsafe"))]
+        println!(
+            "Oblivion version {}, using '{}'",
+            VERSION.bright_yellow(),
+            "ring".bright_green()
+        );
 
         println!(
             "Starting server at {}",
