@@ -14,7 +14,7 @@ use ring::agreement::{agree_ephemeral, EphemeralPrivateKey, PublicKey, UnparsedP
 
 use ring::aead::AES_128_GCM;
 use ring::rand::{SecureRandom, SystemRandom};
-// use scrypt::{scrypt, Params};
+use scrypt::{scrypt, Params};
 use sha2::Sha256;
 
 use crate::exceptions::Exception;
@@ -52,10 +52,13 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 ///
 /// let salt = generate_random_salt();
 /// let (private_key, public_key) = generate_key_pair().unwrap();
-///
+/// 
+/// #[cfg(feature = "unsafe")]
 /// let mut shared_key = SharedKey::new(&private_key, &public_key);
 ///
+/// #[cfg(feature = "unsafe")]
 /// shared_key.hkdf(&salt);
+/// #[cfg(feature = "unsafe")]
 /// shared_key.scrypt(&salt);
 /// ```
 pub struct SharedKey {
@@ -80,18 +83,18 @@ impl SharedKey {
         }
     }
 
-    // pub fn scrypt(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
-    //     let mut aes_key = [0u8; 16];
-    //     match scrypt(
-    //         &self.shared_key.raw_secret_bytes().to_vec(),
-    //         &salt,
-    //         &Params::new(12, 8, 1, 16).unwrap(),
-    //         &mut aes_key,
-    //     ) {
-    //         Ok(()) => Ok(aes_key.to_vec()),
-    //         Err(error) => Err(Exception::InvalidOutputLen { error }.into()),
-    //     }
-    // }
+    pub fn scrypt(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
+        let mut aes_key = [0u8; 16];
+        match scrypt(
+            &self.shared_key,
+            &salt,
+            &Params::new(12, 8, 1, 16).unwrap(),
+            &mut aes_key,
+        ) {
+            Ok(()) => Ok(aes_key.to_vec()),
+            Err(error) => Err(Exception::InvalidOutputLen { error }.into()),
+        }
+    }
 
     pub fn hkdf(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
         let key = Hkdf::<Sha256>::new(Some(salt), &self.shared_key);
