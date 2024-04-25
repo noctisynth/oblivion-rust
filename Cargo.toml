@@ -26,6 +26,7 @@ colored = "2.1"
 chrono = "0.4"
 
 pyo3 = { version = "0.20", optional = true }
+hkdf = "0.12.4"
 
 [lib]
 name = "oblivion"

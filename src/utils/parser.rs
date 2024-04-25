@@ -118,38 +118,6 @@ impl OblivionPath {
     }
 }
 
-/// Oblivion Request Header Generator
-///
-/// ```rust
-/// use oblivion::utils::parser::Oblivion;
-///
-/// assert_eq!(Oblivion::new("GET", "/test").plain_text().as_str(), "GET /test Oblivion/1.1");
-/// ```
-pub struct Oblivion {
-    method: String,
-    olps: String,
-    version: String,
-}
-
-impl Oblivion {
-    pub fn new(method: &str, olps: &str) -> Self {
-        Self {
-            method: method.to_string(),
-            olps: olps.to_string(),
-            version: "1.1".to_string(),
-        }
-    }
-
-    pub fn plain_text(&self) -> String {
-        format!(
-            "{} {} Oblivion/{}",
-            self.method.to_uppercase(),
-            self.olps,
-            self.version
-        )
-    }
-}
-
 /// Oblivion Request Header Parser
 #[derive(Clone, Debug, PartialEq)]
 pub struct OblivionRequest {

@@ -4,8 +4,9 @@ extern crate ring;
 
 use anyhow::Result;
 use elliptic_curve::rand_core::OsRng;
+use hkdf::Hkdf;
 use p256::ecdh::SharedSecret;
-use p256::{ecdh::EphemeralSecret, EncodedPoint, PublicKey};
+use p256::{ecdh::EphemeralSecret, PublicKey};
 use ring::aead::AES_128_GCM;
 use ring::rand::{SecureRandom, SystemRandom};
 use scrypt::{scrypt, Params};
@@ -24,11 +25,8 @@ use crate::exceptions::Exception;
 /// ```
 pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
     let private_key = EphemeralSecret::random(&mut OsRng);
-    let pk_bytes = EncodedPoint::from(private_key.public_key());
-    match PublicKey::from_sec1_bytes(pk_bytes.as_ref()) {
-        Ok(public_key) => Ok((private_key, public_key)),
-        Err(error) => Err(Exception::PublicKeyInvalid { error }),
-    }
+    let public_key = private_key.public_key();
+    Ok((private_key, public_key))
 }
 
 /// Create an ECDH Shared Key
@@ -40,7 +38,7 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 /// let (private_key, public_key) = generate_key_pair().unwrap();
 ///
 /// let mut shared_key = SharedKey::new(&private_key, &public_key);
-/// 
+///
 /// shared_key.hkdf(&salt);
 /// shared_key.scrypt(&salt);
 /// ```
@@ -69,7 +67,7 @@ impl SharedKey {
     }
 
     pub fn hkdf(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
-        let key = self.shared_key.extract::<Sha256>(Some(salt));
+        let key = Hkdf::<Sha256>::new(Some(salt), &self.shared_key.raw_secret_bytes());
         let mut aes_key = [0u8; 16];
         key.expand(&[], &mut aes_key).unwrap();
         Ok(aes_key.to_vec())

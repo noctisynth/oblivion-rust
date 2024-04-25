@@ -575,6 +575,7 @@ dependencies = [
  "colored",
  "elliptic-curve",
  "futures",
+ "hkdf",
  "oblivion-codegen",
  "p256",
  "proc-macro2",
