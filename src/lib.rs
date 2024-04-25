@@ -12,6 +12,9 @@ pub extern crate proc_macro;
 /// # Oblivion Exceptions
 pub mod exceptions;
 
+/// # Oblivion Export Types
+pub mod types;
+
 /// # Oblivion Utilities
 ///
 /// Oblivion utility classes provide key creation, data encryption and decryption, and request resolution processing methods.
@@ -34,7 +37,8 @@ pub mod models;
 ///
 /// ```rust
 /// use oblivion::path_route;
-/// use oblivion::models::render::{BaseResponse, Response};
+/// use oblivion::models::render::BaseResponse;
+/// use oblivion::types::server::Response;
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 /// use oblivion::models::session::Session;
@@ -69,7 +73,8 @@ macro_rules! path_route {
 ///
 /// ```rust
 /// use oblivion::startswith_route;
-/// use oblivion::models::render::{BaseResponse, Response};
+/// use oblivion::models::render::BaseResponse;
+/// use oblivion::types::server::Response;
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 /// use oblivion::models::session::Session;
@@ -107,7 +112,8 @@ macro_rules! startswith_route {
 ///
 /// ```rust
 /// use oblivion::regex_route;
-/// use oblivion::models::render::{BaseResponse, Response};
+/// use oblivion::models::render::BaseResponse;
+/// use oblivion::types::server::Response;
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 /// use oblivion::models::session::Session;
