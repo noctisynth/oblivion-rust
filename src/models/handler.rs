@@ -1,15 +1,14 @@
 //! # Oblivion Default Handler
-use super::{
-    render::{BaseResponse, Response},
-    session::Session,
-};
+use crate::types::server;
+
+use super::{render::BaseResponse, session::Session};
 use oblivion_codegen::async_route;
 
 /// Not Found Handler
 ///
 /// Handling a non-existent route request.
 #[async_route]
-pub fn not_found(mut sess: Session) -> Response {
+pub fn not_found(mut sess: Session) -> server::Result {
     let olps = sess.request.as_mut().unwrap().get_ip();
 
     Ok(BaseResponse::TextResponse(
