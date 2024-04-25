@@ -3,13 +3,18 @@ extern crate rand;
 extern crate ring;
 
 use anyhow::Result;
-use elliptic_curve::rand_core::OsRng;
 use hkdf::Hkdf;
-use p256::ecdh::SharedSecret;
+
+#[cfg(feature = "unsafe")]
+use elliptic_curve::rand_core::OsRng;
+#[cfg(feature = "unsafe")]
 use p256::{ecdh::EphemeralSecret, PublicKey};
+#[cfg(not(feature = "unsafe"))]
+use ring::agreement::{agree_ephemeral, EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
+
 use ring::aead::AES_128_GCM;
 use ring::rand::{SecureRandom, SystemRandom};
-use scrypt::{scrypt, Params};
+// use scrypt::{scrypt, Params};
 use sha2::Sha256;
 
 use crate::exceptions::Exception;
@@ -23,6 +28,17 @@ use crate::exceptions::Exception;
 ///
 /// let (private_key, public_key) = generate_key_pair().unwrap();
 /// ```
+#[cfg(not(feature = "unsafe"))]
+pub fn generate_key_pair() -> Result<(EphemeralPrivateKey, PublicKey), Exception> {
+    // let private_key = EphemeralSecret::random(&mut OsRng);
+    // let public_key = private_key.public_key();
+    let rng = SystemRandom::new();
+    let private_key = EphemeralPrivateKey::generate(&X25519, &rng).unwrap();
+    let public_key = private_key.compute_public_key().unwrap();
+    Ok((private_key, public_key))
+}
+
+#[cfg(feature = "unsafe")]
 pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
     let private_key = EphemeralSecret::random(&mut OsRng);
     let public_key = private_key.public_key();
@@ -43,31 +59,42 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 /// shared_key.scrypt(&salt);
 /// ```
 pub struct SharedKey {
-    shared_key: SharedSecret,
+    shared_key: Vec<u8>,
 }
 
 impl SharedKey {
+    #[cfg(feature = "unsafe")]
     pub fn new(private_key: &EphemeralSecret, public_key: &PublicKey) -> Self {
         Self {
-            shared_key: private_key.diffie_hellman(&public_key),
+            shared_key: private_key
+                .diffie_hellman(&public_key)
+                .raw_secret_bytes()
+                .to_vec(),
         }
     }
 
-    pub fn scrypt(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
-        let mut aes_key = [0u8; 16];
-        match scrypt(
-            &self.shared_key.raw_secret_bytes().to_vec(),
-            &salt,
-            &Params::new(12, 8, 1, 16).unwrap(),
-            &mut aes_key,
-        ) {
-            Ok(()) => Ok(aes_key.to_vec()),
-            Err(error) => Err(Exception::InvalidOutputLen { error }.into()),
+    #[cfg(not(feature = "unsafe"))]
+    pub fn new(private_key: EphemeralPrivateKey, public_key: &UnparsedPublicKey<Vec<u8>>) -> Self {
+        Self {
+            shared_key: agree_ephemeral(private_key, public_key, |key| key.to_vec()).unwrap(),
         }
     }
+
+    // pub fn scrypt(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
+    //     let mut aes_key = [0u8; 16];
+    //     match scrypt(
+    //         &self.shared_key.raw_secret_bytes().to_vec(),
+    //         &salt,
+    //         &Params::new(12, 8, 1, 16).unwrap(),
+    //         &mut aes_key,
+    //     ) {
+    //         Ok(()) => Ok(aes_key.to_vec()),
+    //         Err(error) => Err(Exception::InvalidOutputLen { error }.into()),
+    //     }
+    // }
 
     pub fn hkdf(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
-        let key = Hkdf::<Sha256>::new(Some(salt), &self.shared_key.raw_secret_bytes());
+        let key = Hkdf::<Sha256>::new(Some(salt), &self.shared_key);
         let mut aes_key = [0u8; 16];
         key.expand(&[], &mut aes_key).unwrap();
         Ok(aes_key.to_vec())

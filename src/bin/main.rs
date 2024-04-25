@@ -7,6 +7,8 @@ use oblivion::models::session::Session;
 use oblivion::path_route;
 use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
 use oblivion_codegen::async_route;
+#[cfg(not(feature = "unsafe"))]
+use ring::agreement::{UnparsedPublicKey, X25519};
 use serde_json::json;
 use std::env::args;
 use std::time::Instant;
@@ -69,8 +71,20 @@ async fn main() -> Result<()> {
             let (pr, pu) = generate_key_pair()?;
             let (alice_pr, alice_pu) = generate_key_pair()?;
             let salt = generate_random_salt();
+            #[cfg(feature = "unsafe")]
             let mut shared_bob = SharedKey::new(&pr, &alice_pu);
+            #[cfg(not(feature = "unsafe"))]
+            let mut shared_bob = SharedKey::new(
+                pr,
+                &UnparsedPublicKey::new(&X25519, alice_pu.as_ref().to_vec()),
+            );
+            #[cfg(feature = "unsafe")]
             let mut shared_alice = SharedKey::new(&alice_pr, &pu);
+            #[cfg(not(feature = "unsafe"))]
+            let mut shared_alice = SharedKey::new(
+                alice_pr,
+                &UnparsedPublicKey::new(&X25519, pu.as_ref().to_vec()),
+            );
             let bob_key = shared_bob.hkdf(&salt)?;
             let alice_key = shared_alice.hkdf(&salt)?;
             assert_eq!(bob_key, alice_key);

@@ -2,9 +2,13 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Local};
-use p256::{ecdh::EphemeralSecret, PublicKey};
 use serde_json::Value;
 use tokio::sync::RwLock;
+
+#[cfg(feature = "unsafe")]
+use p256::{ecdh::EphemeralSecret, PublicKey};
+#[cfg(not(feature = "unsafe"))]
+use ring::agreement::{EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
 use crate::exceptions::Exception;
 use crate::utils::gear::Socket;
@@ -17,7 +21,13 @@ use super::render::BaseResponse;
 
 pub struct Session {
     pub header: Option<String>,
+    #[cfg(feature = "unsafe")]
     pub(crate) private_key: EphemeralSecret,
+    #[cfg(feature = "unsafe")]
+    pub(crate) public_key: PublicKey,
+    #[cfg(not(feature = "unsafe"))]
+    pub(crate) private_key: Option<EphemeralPrivateKey>,
+    #[cfg(not(feature = "unsafe"))]
     pub(crate) public_key: PublicKey,
     pub(crate) aes_key: Option<Vec<u8>>,
     pub request_time: DateTime<Local>,
@@ -31,7 +41,10 @@ impl Session {
         let (private_key, public_key) = generate_key_pair()?;
         Ok(Self {
             header: None,
+            #[cfg(feature = "unsafe")]
             private_key,
+            #[cfg(not(feature = "unsafe"))]
+            private_key: Some(private_key),
             public_key,
             aes_key: None,
             request_time: Local::now(),
@@ -45,7 +58,10 @@ impl Session {
         let (private_key, public_key) = generate_key_pair()?;
         Ok(Self {
             header: Some(header.to_string()),
+            #[cfg(feature = "unsafe")]
             private_key,
+            #[cfg(not(feature = "unsafe"))]
+            private_key: Some(private_key),
             public_key,
             aes_key: None,
             request_time: Local::now(),
@@ -62,7 +78,12 @@ impl Session {
             .send(&[&length(&header.to_vec())?, header].concat())
             .await?;
 
+        #[cfg(feature = "unsafe")]
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
+        #[cfg(not(feature = "unsafe"))]
+        let public_key = UnparsedPublicKey::new(&X25519, self.public_key.as_ref().to_vec());
+        #[cfg(not(feature = "unsafe"))]
+        let mut oke = OKE::new(self.private_key.take(), Some(public_key))?;
         oke.from_stream_with_salt(&socket).await?;
         self.aes_key = Some(oke.get_aes_key());
         oke.to_stream(&socket).await?;
@@ -77,7 +98,12 @@ impl Session {
         let mut request = OblivionRequest::new(&header)?;
         request.set_remote_peer(&peer);
 
+        #[cfg(feature = "unsafe")]
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
+        #[cfg(not(feature = "unsafe"))]
+        let public_key = UnparsedPublicKey::new(&X25519, self.public_key.as_ref().to_vec());
+        #[cfg(not(feature = "unsafe"))]
+        let mut oke = OKE::new(self.private_key.take(), Some(public_key))?;
         oke.to_stream_with_salt(&socket).await?;
         oke.from_stream(&socket).await?;
 

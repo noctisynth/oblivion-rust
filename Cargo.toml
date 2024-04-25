@@ -9,8 +9,6 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-elliptic-curve = { version = "0.13", features = ["sec1"] }
-p256 = { version = "0.13", features = ["ecdh"] }
 rand = "0.8"
 ring = "0.17"
 sha2 = "0.10"
@@ -24,15 +22,21 @@ thiserror = "1"
 anyhow = "1.0"
 colored = "2.1"
 chrono = "0.4"
+hkdf = "0.12.4"
 
 pyo3 = { version = "0.20", optional = true }
-hkdf = "0.12.4"
+elliptic-curve = { version = "0.13", features = ["sec1"], optional = true }
+p256 = { version = "0.13", features = ["ecdh"], optional = true }
 
 [lib]
 name = "oblivion"
+
+[[bin]]
+name = "main"
 
 [profile.release]
 lto = true
 
 [features]
+unsafe = ["elliptic-curve", "p256"]
 python = ["pyo3"]

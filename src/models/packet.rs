@@ -7,9 +7,14 @@ use crate::utils::generator::{generate_random_salt, SharedKey};
 use crate::utils::parser::length;
 
 use anyhow::Result;
-use p256::ecdh::EphemeralSecret;
-use p256::PublicKey;
 use serde_json::Value;
+
+#[cfg(feature = "unsafe")]
+use p256::ecdh::EphemeralSecret;
+#[cfg(feature = "unsafe")]
+use p256::PublicKey;
+#[cfg(not(feature = "unsafe"))]
+use ring::agreement::{EphemeralPrivateKey, UnparsedPublicKey, X25519};
 
 const STOP_FLAG: [u8; 4] = u32::MIN.to_be_bytes();
 
@@ -44,6 +49,7 @@ impl From<u32> for OSC {
     }
 }
 
+#[cfg(feature = "unsafe")]
 pub struct OKE<'a> {
     public_key: Option<PublicKey>,
     private_key: Option<&'a EphemeralSecret>,
@@ -52,6 +58,7 @@ pub struct OKE<'a> {
     shared_aes_key: Option<Vec<u8>>,
 }
 
+#[cfg(feature = "unsafe")]
 impl<'a> OKE<'a> {
     pub fn new(
         private_key: Option<&'a EphemeralSecret>,
@@ -110,6 +117,91 @@ impl<'a> OKE<'a> {
 
     pub fn plain_data(&mut self) -> Result<Vec<u8>> {
         let public_key_bytes = self.public_key.unwrap().to_sec1_bytes().to_vec();
+        let mut plain_data_bytes = length(&public_key_bytes)?.to_vec();
+        plain_data_bytes.extend(public_key_bytes);
+        Ok(plain_data_bytes)
+    }
+
+    pub fn plain_salt(&mut self) -> Result<Vec<u8>> {
+        let salt_bytes = self.salt.as_ref().unwrap();
+        let mut plain_salt_bytes = length(&salt_bytes)?.to_vec();
+        plain_salt_bytes.extend(salt_bytes);
+        Ok(plain_salt_bytes)
+    }
+
+    pub fn get_aes_key(&mut self) -> Vec<u8> {
+        self.shared_aes_key.clone().unwrap()
+    }
+}
+
+#[cfg(not(feature = "unsafe"))]
+pub struct OKE {
+    public_key: Option<UnparsedPublicKey<Vec<u8>>>,
+    private_key: Option<EphemeralPrivateKey>,
+    salt: Option<Vec<u8>>,
+    remote_public_key: Option<UnparsedPublicKey<Vec<u8>>>,
+    shared_aes_key: Option<Vec<u8>>,
+}
+
+#[cfg(not(feature = "unsafe"))]
+impl OKE {
+    pub fn new(
+        private_key: Option<EphemeralPrivateKey>,
+        public_key: Option<UnparsedPublicKey<Vec<u8>>>,
+    ) -> Result<Self, Exception> {
+        Ok(Self {
+            public_key,
+            private_key,
+            salt: Some(generate_random_salt()),
+            remote_public_key: None,
+            shared_aes_key: None,
+        })
+    }
+
+    pub fn from_public_key_bytes(&mut self, public_key_bytes: &[u8]) -> Result<&mut Self> {
+        self.public_key = Some(UnparsedPublicKey::new(&X25519, public_key_bytes.to_owned()));
+        Ok(self)
+    }
+
+    pub async fn from_stream(&mut self, stream: &Socket) -> Result<&mut Self> {
+        let remote_public_key_length = stream.recv_usize().await?;
+        let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
+        self.remote_public_key = Some(UnparsedPublicKey::new(&X25519, remote_public_key_bytes));
+        let mut shared_key = SharedKey::new(
+            self.private_key.take().unwrap(),
+            self.remote_public_key.as_ref().unwrap(),
+        );
+        self.shared_aes_key = Some(shared_key.hkdf(&self.salt.as_mut().unwrap())?);
+        Ok(self)
+    }
+
+    pub async fn from_stream_with_salt(&mut self, stream: &Socket) -> Result<&mut Self> {
+        let remote_public_key_length = stream.recv_usize().await?;
+        let remote_public_key_bytes = stream.recv(remote_public_key_length).await?;
+        self.remote_public_key = Some(UnparsedPublicKey::new(&X25519, remote_public_key_bytes));
+        let salt_length = stream.recv_usize().await?;
+        self.salt = Some(stream.recv(salt_length).await?);
+        let mut shared_key = SharedKey::new(
+            self.private_key.take().unwrap(),
+            self.remote_public_key.as_ref().unwrap(),
+        );
+        self.shared_aes_key = Some(shared_key.hkdf(&self.salt.as_mut().unwrap())?);
+        Ok(self)
+    }
+
+    pub async fn to_stream(&mut self, stream: &Socket) -> Result<()> {
+        stream.send(&self.plain_data()?).await?;
+        Ok(())
+    }
+
+    pub async fn to_stream_with_salt(&mut self, stream: &Socket) -> Result<()> {
+        stream.send(&self.plain_data()?).await?;
+        stream.send(&self.plain_salt()?).await?;
+        Ok(())
+    }
+
+    pub fn plain_data(&mut self) -> Result<Vec<u8>> {
+        let public_key_bytes = self.public_key.clone().unwrap().as_ref().to_vec();
         let mut plain_data_bytes = length(&public_key_bytes)?.to_vec();
         plain_data_bytes.extend(public_key_bytes);
         Ok(plain_data_bytes)

@@ -24,6 +24,7 @@ pub enum Exception {
     AllAttemptsRetryFailed { times: u32 },
     #[error("Method [{method}] is not supported yet.")]
     UnsupportedMethod { method: String },
+    #[cfg(feature = "unsafe")]
     #[error("Invalid public key: {error:?}")]
     PublicKeyInvalid {
         #[from]
