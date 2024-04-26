@@ -8,8 +8,8 @@ use oblivion::path_route;
 use oblivion::types::server;
 use oblivion_codegen::async_route;
 use serde_json::json;
+use tokio::time::Instant;
 use std::env::args;
-use std::time::Instant;
 
 #[async_route]
 fn handler(_sess: Session) -> server::Result {

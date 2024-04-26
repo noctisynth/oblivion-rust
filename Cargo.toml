@@ -50,9 +50,15 @@ opt-level = 3
 strip = true # Remove debug symbols
 
 [features]
+bench = []
+perf = []
 unsafe = ["elliptic-curve", "p256"]
 python = ["pyo3"]
 
 [[bench]]
 name = "keygen"
+harness = false
+
+[[bench]]
+name = "socket"
 harness = false

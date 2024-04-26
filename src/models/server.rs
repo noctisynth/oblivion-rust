@@ -3,18 +3,25 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::utils::gear::Socket;
+#[cfg(not(feature = "bench"))]
 use crate::VERSION;
 
 use anyhow::{Error, Result};
 use chrono::Local;
 use colored::Colorize;
+#[cfg(feature = "bench")]
+use std::process;
 use tokio::net::{TcpListener, TcpStream};
+#[cfg(feature = "perf")]
+use tokio::time::Instant;
 
 use super::packet::{OED, OSC};
 use super::router::Router;
 use super::session::Session;
 
 async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result<()> {
+    #[cfg(feature = "perf")]
+    let now = std::time::Instant::now();
     stream.set_ttl(20)?;
     let mut session = Session::new(Socket::new(stream))?;
 
@@ -27,13 +34,28 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
             "500".red()
         );
         eprintln!("{}", error.to_string().bright_red());
+        #[cfg(feature = "bench")]
+        {
+            eprintln!("Handshake failed in benchmark test unexpectedly.");
+            process::exit(1);
+        }
+        #[cfg(not(feature = "bench"))]
         return Ok(());
     }
 
+    #[cfg(feature = "perf")]
+    println!(
+        "握手时长: {}μs",
+        now.elapsed().as_micros().to_string().bright_magenta()
+    );
+
+    #[cfg(not(any(feature = "perf", feature = "bench")))]
     let header = session.header();
+    #[cfg(not(any(feature = "perf", feature = "bench")))]
     let ip_addr = session.get_ip();
     let aes_key = session.aes_key.clone().unwrap();
 
+    #[cfg(not(any(feature = "perf", feature = "bench")))]
     println!(
         "{} -> [{}] \"{}\" {}",
         ip_addr.cyan(),
@@ -42,12 +64,25 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
         "OK".cyan()
     );
 
+    #[cfg(feature = "perf")]
+    let now = Instant::now();
+
     let socket = Arc::clone(&session.socket);
 
     let mut route = router.get_handler(&session.request.as_ref().unwrap().olps)?;
     let callback = route.get_handler()(session).await?;
 
+    #[cfg(not(any(feature = "perf", feature = "bench")))]
     let status_code = callback.get_status_code()?;
+
+    #[cfg(feature = "perf")]
+    println!(
+        "业务函数时长: {}μs",
+        now.elapsed().as_micros().to_string().bright_magenta()
+    );
+
+    #[cfg(feature = "perf")]
+    let now = Instant::now();
 
     OSC::from_u32(1).to_stream(&socket).await?;
     OED::new(aes_key)
@@ -59,6 +94,13 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
         .await?;
     socket.close().await?;
 
+    #[cfg(feature = "perf")]
+    println!(
+        "结束函数时长: {}μs",
+        now.elapsed().as_micros().to_string().bright_magenta()
+    );
+
+    #[cfg(not(any(feature = "perf", feature = "bench")))]
     println!(
         "{} <- [{}] \"{}\" {}",
         ip_addr.cyan(),
@@ -77,6 +119,10 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
 }
 
 pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
+    #[cfg(feature = "perf")]
+    let now = Instant::now();
+    #[cfg(feature = "perf")]
+    println!("=================");
     match _handle(&router, stream, peer).await {
         Ok(()) => {}
         Err(error) => {
@@ -87,9 +133,19 @@ pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
                 "CONNECT - Oblivion/2.0".yellow(),
                 "501".red()
             );
-            eprintln!("{}", error.to_string().bright_red())
+            eprintln!("{}", error.to_string().bright_red());
+            #[cfg(feature = "bench")]
+            {
+                eprintln!("An error occured in handling runtime unexpectedly.");
+                process::exit(1);
+            }
         }
     }
+    #[cfg(feature = "perf")]
+    println!(
+        "总执行时长: {}μs\n=================",
+        now.elapsed().as_micros().to_string().bright_magenta()
+    );
 }
 
 /// Server Core Struct
@@ -145,17 +201,19 @@ impl Server {
             VERSION.bright_yellow(),
             "p256".bright_red()
         );
-        #[cfg(not(feature = "unsafe"))]
+        #[cfg(all(not(feature = "unsafe"), not(feature = "bench")))]
         println!(
             "Oblivion version {}, using '{}'",
             VERSION.bright_yellow(),
             "ring".bright_green()
         );
 
+        #[cfg(not(feature = "bench"))]
         println!(
             "Starting server at {}",
             format!("Oblivion://{}:{}/", self.host, self.port).bright_cyan()
         );
+        #[cfg(not(feature = "bench"))]
         println!("Quit the server by CTRL-BREAK.\n");
 
         while let Ok((stream, peer)) = tcp.accept().await {

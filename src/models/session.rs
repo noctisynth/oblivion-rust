@@ -74,9 +74,15 @@ impl Session {
     pub async fn first_hand(&mut self) -> Result<()> {
         let socket = Arc::clone(&self.socket);
         let header = self.header.as_ref().unwrap().as_bytes();
-        socket
-            .send(&[&length(&header.to_vec())?, header].concat())
-            .await?;
+        #[cfg(feature = "perf")]
+        let now = tokio::time::Instant::now();
+        socket.send(&length(&header.to_vec())?).await?;
+        socket.send(header).await?;
+        #[cfg(feature = "perf")]
+        println!(
+            "发送头时长: {}μs",
+            now.elapsed().as_micros().to_string()
+        );
 
         #[cfg(feature = "unsafe")]
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
@@ -91,13 +97,34 @@ impl Session {
     }
 
     pub async fn second_hand(&mut self) -> Result<()> {
+        #[cfg(feature = "perf")]
+        let now = tokio::time::Instant::now();
+        #[cfg(feature = "perf")]
+        use colored::Colorize;
         let socket = Arc::clone(&self.socket);
         let peer = socket.peer_addr().await?;
+        #[cfg(feature = "perf")]
+        println!(
+            "开始入站时长: {}μs",
+            now.elapsed().as_micros().to_string().bright_magenta()
+        );
         let len_header = socket.recv_usize().await?;
+        #[cfg(feature = "perf")]
+        println!(
+            "捕获头长度时长: {}μs",
+            now.elapsed().as_micros().to_string().bright_magenta()
+        );
         let header = socket.recv_str(len_header).await?;
+        #[cfg(feature = "perf")]
+        println!(
+            "入站时长: {}μs",
+            now.elapsed().as_micros().to_string().bright_magenta()
+        );
         let mut request = OblivionRequest::new(&header)?;
         request.set_remote_peer(&peer);
 
+        #[cfg(feature = "perf")]
+        let now = std::time::Instant::now();
         #[cfg(feature = "unsafe")]
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
         #[cfg(not(feature = "unsafe"))]
@@ -106,6 +133,11 @@ impl Session {
         let mut oke = OKE::new(self.private_key.take(), public_key);
         oke.to_stream_with_salt(&socket).await?;
         oke.from_stream(&socket).await?;
+        #[cfg(feature = "perf")]
+        println!(
+            "密钥交互时长: {}μs",
+            now.elapsed().as_micros().to_string().bright_magenta()
+        );
 
         request.aes_key = Some(oke.get_aes_key());
         self.aes_key = Some(oke.get_aes_key());

@@ -56,7 +56,20 @@ impl Socket {
 
     pub async fn recv_usize(&self) -> Result<usize> {
         let mut len_bytes = [0; 4];
+        #[cfg(not(feature = "perf"))]
         self.reader.lock().await.read_exact(&mut len_bytes).await?;
+        #[cfg(feature = "perf")]
+        #[cfg(feature = "perf")]
+        {
+            use colored::Colorize;
+            let now = tokio::time::Instant::now();
+            let mut reader = self.reader.lock().await;
+            println!(
+                "夺锁时长: {}μs",
+                now.elapsed().as_micros().to_string().bright_magenta()
+            );
+            reader.read_exact(&mut len_bytes).await?;
+        }
         Ok(u32::from_be_bytes(len_bytes) as usize)
     }
 
