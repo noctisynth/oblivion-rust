@@ -165,6 +165,7 @@ impl Server {
     }
 
     pub async fn run(&self) -> Result<()> {
+        #[cfg(not(feature = "bench"))]
         println!("Performing system checks...\n");
 
         let address = format!("{}:{}", self.host, self.port);
