@@ -88,8 +88,7 @@ impl Socket {
     pub async fn recv_str(&self, len: usize) -> Result<String> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
         self.reader.lock().await.read_exact(&mut recv_bytes).await?;
-
-        Ok(String::from_utf8(recv_bytes)?.trim().to_string())
+        Ok(String::from_utf8(recv_bytes)?)
     }
 
     pub async fn send(&self, data: &[u8]) -> Result<()> {

@@ -68,3 +68,11 @@ harness = false
 [[bench]]
 name = "rand"
 harness = false
+
+[[bench]]
+name = "parser"
+harness = false
+
+[[bench]]
+name = "packet"
+harness = false

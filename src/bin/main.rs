@@ -21,11 +21,11 @@ fn handler(_sess: Session) -> server::Result {
 }
 
 #[async_route]
-fn welcome(mut sess: Session) -> server::Result {
+fn welcome(sess: Session) -> server::Result {
     Ok(BaseResponse::TextResponse(
         format!(
             "欢迎进入信息绝对安全区, 来自[{}]的朋友",
-            sess.request.as_mut().unwrap().get_ip()
+            sess.request.get_ip()
         ),
         200,
     ))

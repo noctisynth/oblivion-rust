@@ -33,7 +33,7 @@ impl OSC {
         })
     }
 
-    pub async fn to_stream(&mut self, stream: &Socket) -> Result<()> {
+    pub async fn to_stream(&self, stream: &Socket) -> Result<()> {
         stream.send(&self.status_code.to_be_bytes()).await?;
         Ok(())
     }
@@ -130,7 +130,7 @@ pub struct OKE {
     private_key: Option<EphemeralPrivateKey>,
     salt: Vec<u8>,
     remote_public_key: Option<UnparsedPublicKey<Vec<u8>>>,
-    shared_aes_key: Option<Vec<u8>>,
+    shared_aes_key: Option<[u8; 16]>,
 }
 
 #[cfg(not(feature = "unsafe"))]
@@ -161,7 +161,7 @@ impl OKE {
             self.private_key.take().unwrap(),
             self.remote_public_key.as_ref().unwrap(),
         )?;
-        self.shared_aes_key = Some(shared_key.hkdf(&self.salt)?);
+        self.shared_aes_key = Some(shared_key.hkdf(&self.salt));
         Ok(self)
     }
 
@@ -175,83 +175,79 @@ impl OKE {
             self.private_key.take().unwrap(),
             self.remote_public_key.as_ref().unwrap(),
         )?;
-        self.shared_aes_key = Some(shared_key.hkdf(&self.salt)?);
+        self.shared_aes_key = Some(shared_key.hkdf(&self.salt));
         Ok(self)
     }
 
-    pub async fn to_stream(&mut self, stream: &Socket) -> Result<()> {
+    pub async fn to_stream(&self, stream: &Socket) -> Result<()> {
         stream.send(&self.plain_data()?).await?;
         Ok(())
     }
 
-    pub async fn to_stream_with_salt(&mut self, stream: &Socket) -> Result<()> {
+    pub async fn to_stream_with_salt(&self, stream: &Socket) -> Result<()> {
         stream.send(&self.plain_data()?).await?;
         stream.send(&self.plain_salt()?).await?;
         Ok(())
     }
 
-    pub fn plain_data(&mut self) -> Result<Vec<u8>> {
+    pub fn plain_data(&self) -> Result<Vec<u8>> {
         let public_key_bytes = self.public_key.as_ref();
         let mut plain_data_bytes = length(public_key_bytes)?.to_vec();
-        plain_data_bytes.extend(public_key_bytes);
+        plain_data_bytes.extend_from_slice(public_key_bytes);
         Ok(plain_data_bytes)
     }
 
-    pub fn plain_salt(&mut self) -> Result<Vec<u8>> {
+    pub fn plain_salt(&self) -> Result<Vec<u8>> {
         let mut plain_salt_bytes = length(&self.salt)?.to_vec();
-        plain_salt_bytes.extend(&self.salt);
+        plain_salt_bytes.extend_from_slice(&self.salt);
         Ok(plain_salt_bytes)
     }
 
-    pub fn get_aes_key(&mut self) -> Vec<u8> {
-        self.shared_aes_key.clone().unwrap()
+    pub fn get_aes_key(&self) -> [u8; 16] {
+        self.shared_aes_key.unwrap()
     }
 }
 
-pub struct OED {
-    aes_key: Vec<u8>,
+pub struct OED<'a> {
+    aes_key: &'a [u8],
     data: Option<Vec<u8>>,
-    encrypted_data: Option<Vec<u8>>,
-    tag: Option<Vec<u8>>,
-    nonce: Option<Vec<u8>>,
+    encrypted_data: Vec<u8>,
+    tag: Vec<u8>,
+    nonce: Vec<u8>,
     chunk_count: u32,
 }
 
-impl OED {
-    pub fn new(aes_key: Vec<u8>) -> Self {
+impl<'a> OED<'a> {
+    pub fn new(aes_key: &'a [u8]) -> Self {
         Self {
             aes_key,
             data: None,
-            encrypted_data: None,
-            tag: None,
-            nonce: None,
+            encrypted_data: Vec::new(),
+            tag: Vec::new(),
+            nonce: Vec::new(),
             chunk_count: 0,
         }
     }
 
     pub fn from_json_or_string(&mut self, json_or_str: String) -> Result<&mut Self, Exception> {
-        let (encrypted_data, tag, nonce) = encrypt_plaintext(json_or_str, &self.aes_key)?;
         (self.encrypted_data, self.tag, self.nonce) =
-            (Some(encrypted_data), Some(tag), Some(nonce));
+            encrypt_plaintext(json_or_str, &self.aes_key)?;
         Ok(self)
     }
 
     pub fn from_dict(&mut self, dict: Value) -> Result<&mut Self, Exception> {
-        let (encrypted_data, tag, nonce) = encrypt_plaintext(dict.to_string(), &self.aes_key)?;
         (self.encrypted_data, self.tag, self.nonce) =
-            (Some(encrypted_data), Some(tag), Some(nonce));
+            encrypt_plaintext(dict.to_string(), &self.aes_key)?;
         Ok(self)
     }
 
     pub fn from_encrypted_data(&mut self, data: Vec<u8>) -> Result<&mut Self, ()> {
-        self.encrypted_data = Some(data);
+        self.encrypted_data = data;
         Ok(self)
     }
 
     pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, Exception> {
-        let (encrypted_data, tag, nonce) = encrypt_bytes(data, &self.aes_key)?;
-        (self.encrypted_data, self.tag, self.nonce) =
-            (Some(encrypted_data), Some(tag), Some(nonce));
+        (self.encrypted_data, self.tag, self.nonce) = encrypt_bytes(data, &self.aes_key)?;
         Ok(self)
     }
 
@@ -259,8 +255,8 @@ impl OED {
         let len_nonce = stream.recv_usize().await?;
         let len_tag = stream.recv_usize().await?;
 
-        self.nonce = Some(stream.recv(len_nonce).await?);
-        self.tag = Some(stream.recv(len_tag).await?);
+        self.nonce = stream.recv(len_nonce).await?;
+        self.tag = stream.recv(len_tag).await?;
 
         let mut encrypted_data: Vec<u8> = Vec::new();
         self.chunk_count = 0;
@@ -268,7 +264,7 @@ impl OED {
         loop {
             let prefix = stream.recv_usize().await?;
             if prefix == 0 {
-                self.encrypted_data = Some(encrypted_data);
+                self.encrypted_data = encrypted_data;
                 break;
             }
 
@@ -282,10 +278,10 @@ impl OED {
         }
 
         match decrypt_bytes(
-            self.encrypted_data.clone().unwrap(),
-            self.tag.as_ref().unwrap(),
+            self.encrypted_data.clone(),
+            &self.tag,
             &self.aes_key,
-            self.nonce.as_ref().unwrap(),
+            &self.nonce,
         ) {
             Ok(data) => {
                 self.data = Some(data);
@@ -299,8 +295,7 @@ impl OED {
         stream.send(&self.plain_data()?).await?;
 
         self.chunk_count = 0;
-        let encrypted_data = self.encrypted_data.as_ref().unwrap();
-        let mut remaining_data = &encrypted_data[..];
+        let mut remaining_data = &self.encrypted_data[..];
         while !remaining_data.is_empty() {
             let chunk_size = remaining_data.len().min(1024);
 
@@ -316,19 +311,16 @@ impl OED {
         Ok(())
     }
 
-    pub fn plain_data(&mut self) -> Result<Vec<u8>> {
-        let nonce_bytes = self.nonce.as_ref().unwrap();
-        let tag_bytes = self.tag.as_ref().unwrap();
-
-        let mut plain_bytes = length(nonce_bytes)?.to_vec();
-        plain_bytes.extend(length(tag_bytes).unwrap());
-        plain_bytes.extend(nonce_bytes);
-        plain_bytes.extend(tag_bytes);
+    pub fn plain_data(&self) -> Result<Vec<u8>> {
+        let mut plain_bytes = length(&self.nonce)?.to_vec();
+        plain_bytes.extend_from_slice(&length(&self.tag)?);
+        plain_bytes.extend_from_slice(&self.nonce);
+        plain_bytes.extend_from_slice(&self.tag);
 
         Ok(plain_bytes)
     }
 
-    pub fn get_data(&mut self) -> Vec<u8> {
+    pub fn get_data(&self) -> Vec<u8> {
         self.data.clone().unwrap()
     }
 }

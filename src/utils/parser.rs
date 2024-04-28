@@ -3,7 +3,6 @@
 //! Used to parse and reconstruct data and store it.
 use anyhow::{Error, Result};
 use regex::Regex;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -101,136 +100,93 @@ impl OblivionPath {
         }
     }
 
-    pub fn get_protocol(&self) -> String {
-        self.protocol.clone()
+    pub fn get_protocol(&self) -> &str {
+        &self.protocol
     }
 
-    pub fn get_olps(&self) -> String {
-        self.olps.clone()
+    pub fn get_olps(&self) -> &str {
+        &self.olps
     }
 
-    pub fn get_host(&self) -> String {
-        self.host.clone()
+    pub fn get_host(&self) -> &str {
+        &self.host
     }
 
-    pub fn get_port(&self) -> String {
-        self.port.clone()
+    pub fn get_port(&self) -> &str {
+        &self.port
     }
 }
 
 /// Oblivion Request Header Parser
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Default)]
 pub struct OblivionRequest {
-    pub(crate) header: String,
     pub(crate) method: String,
     pub(crate) olps: String,
     protocol: String,
     version: String,
-    data: Option<String>,
-    plain_text: String,
-    post: Option<Value>,
-    put: Option<Vec<u8>>,
-    remote_addr: Option<String>,
-    remote_port: Option<i32>,
-    pub(crate) aes_key: Option<Vec<u8>>,
+    remote_addr: String,
+    remote_port: u16,
+    pub(crate) aes_key: Option<[u8; 16]>,
 }
 
 impl OblivionRequest {
     pub fn new(header: &str) -> Result<Self, Exception> {
-        let plain_text = header;
-        let re =
-            Regex::new(r"(?P<method>\w+) (?P<olps>\S+) (?P<protocol>\w+)/(?P<version>\d+\.\d+)")
-                .unwrap();
-
-        if let Some(captures) = re.captures(header) {
-            let mut extracted_values: HashMap<&str, Option<&str>> = HashMap::new();
-
-            for capture_name in re.capture_names() {
-                if let Some(capture_name) = capture_name {
-                    let value = captures.name(capture_name).map(|m| m.as_str());
-                    extracted_values.insert(capture_name, value);
-                }
-            }
-
-            let method = extracted_values
-                .get("method")
-                .unwrap_or(&None)
-                .unwrap_or_default()
-                .to_string();
-            let olps = extracted_values
-                .get("olps")
-                .unwrap_or(&None)
-                .unwrap_or_default()
-                .to_string();
-            let protocol = extracted_values
-                .get("protocol")
-                .unwrap_or(&Some("80"))
-                .unwrap_or_default()
-                .to_string();
-            let version = extracted_values
-                .get("version")
-                .unwrap_or(&Some("/"))
-                .unwrap_or_default()
-                .to_string();
-            Ok(Self {
-                method,
-                olps,
-                protocol,
-                version,
-                data: None,
-                plain_text: plain_text.to_string(),
-                post: None,
-                put: None,
-                remote_addr: None,
-                remote_port: None,
-                aes_key: None,
-                header: header.to_string(),
-            })
-        } else {
-            Err(Exception::BadProtocol {
-                header: header.to_string(),
-            })
-        }
+        let (mut method, mut olps, mut protocol, mut version) =
+            (String::new(), String::new(), String::new(), String::new());
+        header
+            .split_whitespace()
+            .enumerate()
+            .try_for_each(|(index, part)| {
+                Ok({
+                    match index {
+                        0 => method = part.to_string(),
+                        1 => olps = part.to_string(),
+                        2 => {
+                            let parts: Vec<&str> = part.split("/").collect();
+                            if parts.len() == 2 {
+                                protocol = parts[0].to_string();
+                                version = parts[1].to_string();
+                            } else {
+                                return Err(Exception::InvalidHeader(header.to_string()));
+                            }
+                        }
+                        _ => return Err(Exception::InvalidHeader(header.to_string())),
+                    };
+                })
+            })?;
+        Ok(Self {
+            method,
+            olps,
+            protocol,
+            version,
+            remote_addr: String::new(),
+            remote_port: 0,
+            aes_key: None,
+        })
     }
 
     pub fn set_remote_peer(&mut self, peer: &SocketAddr) {
-        self.remote_addr = Some(peer.ip().to_string());
-        self.remote_port = Some(peer.port().into())
+        self.remote_addr = peer.ip().to_string();
+        self.remote_port = peer.port();
     }
 
-    pub fn set_post(&mut self, value: Value) {
-        self.post = Some(value);
+    pub fn get_method(&mut self) -> &str {
+        &self.method
     }
 
-    pub fn set_put(&mut self, bytes: Vec<u8>) {
-        self.put = Some(bytes);
+    pub fn get_olps(&mut self) -> &str {
+        &self.olps
     }
 
-    pub fn get_method(&mut self) -> String {
-        self.method.clone()
+    pub fn get_protocol(&mut self) -> &str {
+        &self.protocol
     }
 
-    pub fn get_post(&mut self) -> Value {
-        self.post.clone().unwrap()
+    pub fn get_version(&self) -> &str {
+        &self.version
     }
 
-    pub fn get_put(&mut self) -> Vec<u8> {
-        self.put.clone().unwrap()
-    }
-
-    pub fn get_olps(&mut self) -> String {
-        self.olps.clone()
-    }
-
-    pub fn get_protocol(&mut self) -> String {
-        self.protocol.clone()
-    }
-
-    pub fn get_version(&mut self) -> String {
-        self.version.clone()
-    }
-
-    pub fn get_ip(&mut self) -> String {
-        self.remote_addr.clone().unwrap()
+    pub fn get_ip(&self) -> &str {
+        &self.remote_addr
     }
 }

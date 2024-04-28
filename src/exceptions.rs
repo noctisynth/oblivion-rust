@@ -10,18 +10,14 @@ use thiserror::Error;
 /// Use an iterator as the type of exception returned by a function.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum Exception {
-    #[error("Request not yet pre-processed")]
-    ErrorNotPrepared,
-    #[error("Incorrect protocol header: {header}")]
-    BadProtocol { header: String },
+    #[error("Invalid header: {0}")]
+    InvalidHeader(String),
     #[error("Link requests to the server are denied, either due to insufficient privileges or an attack on the server.")]
     ConnectionRefusedError,
     #[error("Wrong Oblivion address: {olps}")]
     InvalidOblivion { olps: String },
     #[error("Exceeded expected packet size: {size}")]
     DataTooLarge { size: usize },
-    #[error("All request attempts failed: {times}")]
-    AllAttemptsRetryFailed { times: u32 },
     #[error("Method [{method}] is not supported yet.")]
     UnsupportedMethod { method: String },
     #[cfg(feature = "unsafe")]

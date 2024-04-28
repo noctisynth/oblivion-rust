@@ -98,11 +98,11 @@ impl SharedKey {
         }
     }
 
-    pub fn hkdf(&mut self, salt: &[u8]) -> Result<Vec<u8>> {
+    pub fn hkdf(&mut self, salt: &[u8]) -> [u8; 16] {
         let key = Hkdf::<Sha256>::new(Some(salt), &self.shared_key);
         let mut aes_key = [0u8; 16];
         key.expand(&[], &mut aes_key).unwrap();
-        Ok(aes_key.to_vec())
+        aes_key
     }
 }
 

@@ -25,7 +25,7 @@ async fn hkdf(
         private_key,
         &UnparsedPublicKey::new(&X25519, public_key.as_ref().to_vec()),
     )?;
-    shared_key.hkdf(&salt)?;
+    shared_key.hkdf(&salt);
     Ok(())
 }
 

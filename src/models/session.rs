@@ -20,7 +20,7 @@ use super::packet::{OED, OKE, OSC};
 use super::render::BaseResponse;
 
 pub struct Session {
-    pub header: Option<String>,
+    pub header: String,
     #[cfg(feature = "unsafe")]
     pub(crate) private_key: EphemeralSecret,
     #[cfg(feature = "unsafe")]
@@ -29,9 +29,9 @@ pub struct Session {
     pub(crate) private_key: Option<EphemeralPrivateKey>,
     #[cfg(not(feature = "unsafe"))]
     pub(crate) public_key: PublicKey,
-    pub(crate) aes_key: Option<Vec<u8>>,
+    pub(crate) aes_key: [u8; 16],
     pub request_time: DateTime<Local>,
-    pub request: Option<OblivionRequest>,
+    pub request: OblivionRequest,
     pub socket: Arc<Socket>,
     closed: RwLock<bool>,
 }
@@ -40,32 +40,32 @@ impl Session {
     pub fn new(socket: Socket) -> Result<Self> {
         let (private_key, public_key) = generate_key_pair()?;
         Ok(Self {
-            header: None,
+            header: String::new(),
             #[cfg(feature = "unsafe")]
             private_key,
             #[cfg(not(feature = "unsafe"))]
             private_key: Some(private_key),
             public_key,
-            aes_key: None,
+            aes_key: Default::default(),
             request_time: Local::now(),
-            request: None,
+            request: Default::default(),
             socket: Arc::new(socket),
             closed: RwLock::new(false),
         })
     }
 
-    pub fn new_with_header(header: &str, socket: Socket) -> Result<Self> {
+    pub fn new_with_header(header: String, socket: Socket) -> Result<Self> {
         let (private_key, public_key) = generate_key_pair()?;
         Ok(Self {
-            header: Some(header.to_string()),
+            header,
             #[cfg(feature = "unsafe")]
             private_key,
             #[cfg(not(feature = "unsafe"))]
             private_key: Some(private_key),
             public_key,
-            aes_key: None,
+            aes_key: Default::default(),
             request_time: Local::now(),
-            request: None,
+            request: Default::default(),
             socket: Arc::new(socket),
             closed: RwLock::new(false),
         })
@@ -73,16 +73,13 @@ impl Session {
 
     pub async fn first_hand(&mut self) -> Result<()> {
         let socket = Arc::clone(&self.socket);
-        let header = self.header.as_ref().unwrap().as_bytes();
+        let header = self.header.as_bytes();
         #[cfg(feature = "perf")]
         let now = tokio::time::Instant::now();
         socket.send(&length(&header.to_vec())?).await?;
         socket.send(header).await?;
         #[cfg(feature = "perf")]
-        println!(
-            "发送头时长: {}μs",
-            now.elapsed().as_micros().to_string()
-        );
+        println!("发送头时长: {}μs", now.elapsed().as_micros().to_string());
 
         #[cfg(feature = "unsafe")]
         let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
@@ -91,7 +88,7 @@ impl Session {
         #[cfg(not(feature = "unsafe"))]
         let mut oke = OKE::new(self.private_key.take(), public_key);
         oke.from_stream_with_salt(&socket).await?;
-        self.aes_key = Some(oke.get_aes_key());
+        self.aes_key = oke.get_aes_key();
         oke.to_stream(&socket).await?;
         Ok(())
     }
@@ -140,10 +137,10 @@ impl Session {
         );
 
         request.aes_key = Some(oke.get_aes_key());
-        self.aes_key = Some(oke.get_aes_key());
+        self.aes_key = oke.get_aes_key();
 
-        self.request = Some(request);
-        self.header = Some(header);
+        self.request = request;
+        self.header = header;
         Ok(())
     }
 
@@ -164,7 +161,7 @@ impl Session {
         let socket = &self.socket;
 
         OSC::from_u32(0).to_stream(socket).await?;
-        OED::new(self.aes_key.clone().unwrap())
+        OED::new(&self.aes_key)
             .from_bytes(data)?
             .to_stream(socket)
             .await?;
@@ -189,7 +186,7 @@ impl Session {
         let socket = &self.socket;
 
         let flag = OSC::from_stream(socket).await?.status_code;
-        let content = OED::new(self.aes_key.clone().unwrap())
+        let content = OED::new(&self.aes_key)
             .from_stream(socket)
             .await?
             .get_data();
@@ -215,11 +212,11 @@ impl Session {
         *self.closed.read().await
     }
 
-    pub fn header(&mut self) -> String {
-        self.header.clone().unwrap()
+    pub fn header(&self) -> &str {
+        &self.header
     }
 
-    pub fn get_ip(&mut self) -> String {
-        self.request.as_mut().unwrap().get_ip()
+    pub fn get_ip(&self) -> &str {
+        self.request.get_ip()
     }
 }

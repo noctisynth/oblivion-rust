@@ -50,10 +50,10 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
     );
 
     #[cfg(not(any(feature = "perf", feature = "bench")))]
-    let header = session.header();
+    let header = session.header().to_string();
     #[cfg(not(any(feature = "perf", feature = "bench")))]
-    let ip_addr = session.get_ip();
-    let aes_key = session.aes_key.clone().unwrap();
+    let ip_addr = session.get_ip().to_string();
+    let aes_key = session.aes_key.clone();
 
     #[cfg(not(any(feature = "perf", feature = "bench")))]
     println!(
@@ -69,7 +69,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
 
     let socket = Arc::clone(&session.socket);
 
-    let callback = router.get_handler(&session.request.as_ref().unwrap().olps)?(session).await?;
+    let callback = router.get_handler(&session.request.olps)?(session).await?;
 
     #[cfg(not(any(feature = "perf", feature = "bench")))]
     let status_code = callback.get_status_code()?;
@@ -84,7 +84,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
     let now = Instant::now();
 
     OSC::from_u32(1).to_stream(&socket).await?;
-    OED::new(aes_key)
+    OED::new(&aes_key)
         .from_bytes(callback.as_bytes()?)?
         .to_stream(&socket)
         .await?;
@@ -117,7 +117,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
     Ok(())
 }
 
-pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
+pub async fn handle(router: Arc<Router>, stream: TcpStream, peer: SocketAddr) {
     #[cfg(feature = "perf")]
     let now = Instant::now();
     #[cfg(feature = "perf")]
@@ -151,7 +151,7 @@ pub async fn handle(router: Router, stream: TcpStream, peer: SocketAddr) {
 pub struct Server {
     host: String,
     port: i32,
-    router: Router,
+    router: Arc<Router>,
 }
 
 impl Server {
@@ -159,7 +159,7 @@ impl Server {
         Self {
             host: host.to_string(),
             port,
-            router,
+            router: Arc::new(router),
         }
     }
 
@@ -217,8 +217,7 @@ impl Server {
         println!("Quit the server by CTRL-BREAK.\n");
 
         while let Ok((stream, peer)) = tcp.accept().await {
-            let router = self.router.clone();
-            tokio::spawn(handle(router, stream, peer));
+            tokio::spawn(handle(Arc::clone(&self.router), stream, peer));
         }
 
         Ok(())

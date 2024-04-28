@@ -120,7 +120,6 @@ impl Response {
 pub struct Client {
     pub entrance: String,
     pub path: OblivionPath,
-    pub header: String,
     pub session: Arc<Session>,
     pub responses: Arc<Mutex<VecDeque<Response>>>,
 }
@@ -139,14 +138,13 @@ impl Client {
             Err(_) => return Err(Error::from(Exception::ConnectionRefusedError)),
         };
 
-        let mut session = Session::new_with_header(&header, Socket::new(tcp))?;
+        let mut session = Session::new_with_header(header, Socket::new(tcp))?;
 
         session.handshake(0).await?;
 
         Ok(Self {
             entrance: entrance.to_string(),
             path,
-            header,
             session: Arc::new(session),
             responses: Arc::new(Mutex::new(VecDeque::new())),
         })
@@ -200,7 +198,6 @@ impl Client {
     }
 
     pub async fn close(&self) -> Result<()> {
-        self.session.close().await?;
-        Ok(())
+        self.session.close().await
     }
 }
