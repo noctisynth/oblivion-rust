@@ -16,6 +16,7 @@ ring = "0.17"
 sha2 = "0.10"
 scrypt = "0.11"
 hkdf = "0.12.4"
+fastrand = "2.1.0"
 
 # Utils
 oblivion-codegen = { path = "oblivion-codegen" }
@@ -27,6 +28,7 @@ thiserror = "1"
 anyhow = "1.0"
 colored = "2.1"
 chrono = "0.4"
+rayon = "1.10.0"
 
 # Optional
 pyo3 = { version = "0.20", optional = true }
@@ -61,4 +63,8 @@ harness = false
 
 [[bench]]
 name = "socket"
+harness = false
+
+[[bench]]
+name = "rand"
 harness = false

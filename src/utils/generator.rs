@@ -13,7 +13,7 @@ use p256::{ecdh::EphemeralSecret, PublicKey};
 use ring::agreement::{agree_ephemeral, EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
 use ring::aead::AES_128_GCM;
-use ring::rand::{SecureRandom, SystemRandom};
+use ring::rand::SystemRandom;
 use scrypt::{scrypt, Params};
 use sha2::Sha256;
 
@@ -113,8 +113,8 @@ impl SharedKey {
 /// let salt = generate_random_salt();
 /// ```
 pub fn generate_random_salt() -> Vec<u8> {
-    let rand = SystemRandom::new();
+    let mut rng = fastrand::Rng::new();
     let mut key_bytes = vec![0; AES_128_GCM.key_len()];
-    rand.fill(&mut key_bytes).unwrap();
+    rng.fill(&mut key_bytes);
     key_bytes
 }

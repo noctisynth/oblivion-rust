@@ -69,8 +69,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
 
     let socket = Arc::clone(&session.socket);
 
-    let mut route = router.get_handler(&session.request.as_ref().unwrap().olps)?;
-    let callback = route.get_handler()(session).await?;
+    let callback = router.get_handler(&session.request.as_ref().unwrap().olps)?(session).await?;
 
     #[cfg(not(any(feature = "perf", feature = "bench")))]
     let status_code = callback.get_status_code()?;

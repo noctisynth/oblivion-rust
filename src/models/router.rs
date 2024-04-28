@@ -3,6 +3,7 @@ use super::handler::not_found;
 use super::session::Session;
 use crate::types::server;
 use anyhow::Result;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -18,7 +19,7 @@ impl Route {
         Self { handler }
     }
 
-    pub fn get_handler(&mut self) -> Handler {
+    pub fn get_handler(&self) -> Handler {
         self.handler.clone()
     }
 }
@@ -44,7 +45,7 @@ impl RoutePath {
         }
     }
 
-    pub fn check(&mut self, olps: &str) -> Result<bool> {
+    pub fn check(&self, olps: &str) -> Result<bool> {
         if self.route_type == RouteType::RegexPath {
             let regex = Regex::new(&self.route)?;
             Ok(regex.is_match(olps))
@@ -69,7 +70,7 @@ impl Router {
     }
 
     pub fn route(&mut self, path: RoutePath, handler: Handler) -> &mut Self {
-        self.routes.insert(path.clone(), Route { handler: handler });
+        self.routes.insert(path.clone(), Route { handler });
         self
     }
 
@@ -78,13 +79,20 @@ impl Router {
         self.routes.insert(path.clone(), route);
     }
 
-    pub fn get_handler(&self, path: &str) -> Result<Route> {
-        for (route_path, route) in &self.routes {
-            let mut route_path = route_path.clone();
-            if route_path.check(path)? {
-                return Ok(route.clone());
-            };
+    pub fn get_handler(&self, path: &str) -> Result<Handler> {
+        let handler = self
+            .routes
+            .par_iter()
+            .find_any(|values| {
+                let (route_path, _) = values;
+                route_path.check(path).unwrap_or(false)
+            })
+            .map(|route| route.1.get_handler());
+
+        if let Some(route) = handler {
+            Ok(route)
+        } else {
+            Ok(not_found)
         }
-        Ok(Route::new(not_found))
     }
 }
