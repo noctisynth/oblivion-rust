@@ -1,6 +1,6 @@
 [package]
 name = "oblivion"
-version = "2.0.2"
+version = "2.1.0"
 authors = ["苏向夜 <fu050409@163.com>"]
 description = "Rust High Concurrency Implementation of Oblivion, an End-to-End Encryption Protocol Based on ECDHE Encryption Algorithm"
 edition = "2021"
@@ -16,7 +16,6 @@ ring = "0.17"
 sha2 = "0.10"
 scrypt = "0.11"
 hkdf = "0.12.4"
-fastrand = "2.1.0"
 
 # Utils
 oblivion-codegen = { path = "oblivion-codegen" }
