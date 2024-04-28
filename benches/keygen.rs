@@ -9,7 +9,7 @@ use p256::{ecdh::EphemeralSecret, PublicKey};
 use ring::agreement::{EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
 async fn generate() {
-    generate_key_pair().unwrap();
+    generate_key_pair();
 }
 
 async fn hkdf(
@@ -56,7 +56,7 @@ fn criterion_benchmark_keygen(c: &mut Criterion) {
 fn criterion_benchmark_kdf(c: &mut Criterion) {
     c.bench_function("kdf", |b| {
         b.to_async(Runtime::new().unwrap()).iter(|| async {
-            let (prk, puk) = generate_key_pair().unwrap();
+            let (prk, puk) = generate_key_pair();
             let salt = generate_random_salt();
             hkdf(black_box(prk), black_box(puk), black_box(salt.to_vec())).await
         })
@@ -66,7 +66,7 @@ fn criterion_benchmark_kdf(c: &mut Criterion) {
 fn criterion_benchmark_scrypt(c: &mut Criterion) {
     c.bench_function("scrypt", |b| {
         b.to_async(Runtime::new().unwrap()).iter(|| async {
-            let (prk, puk) = generate_key_pair().unwrap();
+            let (prk, puk) = generate_key_pair();
             let salt = generate_random_salt();
             scrypt(black_box(prk), black_box(puk), black_box(salt)).await
         })

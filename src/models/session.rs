@@ -38,7 +38,7 @@ pub struct Session {
 
 impl Session {
     pub fn new(socket: Socket) -> Result<Self> {
-        let (private_key, public_key) = generate_key_pair()?;
+        let (private_key, public_key) = generate_key_pair();
         Ok(Self {
             header: String::new(),
             #[cfg(feature = "unsafe")]
@@ -55,7 +55,7 @@ impl Session {
     }
 
     pub fn new_with_header(header: String, socket: Socket) -> Result<Self> {
-        let (private_key, public_key) = generate_key_pair()?;
+        let (private_key, public_key) = generate_key_pair();
         Ok(Self {
             header,
             #[cfg(feature = "unsafe")]

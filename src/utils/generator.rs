@@ -29,11 +29,11 @@ use crate::exceptions::Exception;
 /// let (private_key, public_key) = generate_key_pair().unwrap();
 /// ```
 #[cfg(not(feature = "unsafe"))]
-pub fn generate_key_pair() -> Result<(EphemeralPrivateKey, PublicKey), Exception> {
+pub fn generate_key_pair() -> (EphemeralPrivateKey, PublicKey) {
     let rng = SystemRandom::new();
     let private_key = EphemeralPrivateKey::generate(&X25519, &rng).unwrap();
     let public_key = private_key.compute_public_key().unwrap();
-    Ok((private_key, public_key))
+    (private_key, public_key)
 }
 
 #[cfg(feature = "unsafe")]
