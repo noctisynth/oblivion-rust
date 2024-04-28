@@ -8,10 +8,6 @@ use p256::{ecdh::EphemeralSecret, PublicKey};
 #[cfg(not(feature = "unsafe"))]
 use ring::agreement::{EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
-async fn generate() {
-    generate_key_pair();
-}
-
 async fn hkdf(
     #[cfg(feature = "unsafe")] private_key: EphemeralSecret,
     #[cfg(not(feature = "unsafe"))] private_key: EphemeralPrivateKey,
@@ -47,10 +43,7 @@ async fn scrypt(
 }
 
 fn criterion_benchmark_keygen(c: &mut Criterion) {
-    c.bench_function("keygen", |b| {
-        b.to_async(Runtime::new().unwrap())
-            .iter(|| async { generate().await })
-    });
+    c.bench_function("keygen", |b| b.iter(|| generate_key_pair()));
 }
 
 fn criterion_benchmark_kdf(c: &mut Criterion) {
