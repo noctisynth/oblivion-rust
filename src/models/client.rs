@@ -125,6 +125,7 @@ pub struct Client {
 }
 
 impl Client {
+    #[must_use]
     pub async fn connect(entrance: &str) -> Result<Self> {
         let path = OblivionPath::new(&entrance)?;
         let header = format!("CONNECT {} Oblivion/2.0", path.get_olps());
