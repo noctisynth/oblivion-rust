@@ -26,7 +26,7 @@ use crate::exceptions::Exception;
 /// ```rust
 /// use oblivion::utils::generator::generate_key_pair;
 ///
-/// let (private_key, public_key) = generate_key_pair().unwrap();
+/// let (private_key, public_key) = generate_key_pair();
 /// ```
 #[cfg(not(feature = "unsafe"))]
 pub fn generate_key_pair() -> (EphemeralPrivateKey, PublicKey) {
@@ -49,10 +49,15 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 /// use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
 ///
 /// let salt = generate_random_salt();
+/// #[cfg(feature = "unsafe")]
 /// let (private_key, public_key) = generate_key_pair().unwrap();
+/// #[cfg(not(feature = "unsafe"))]
+/// let (private_key, public_key) = generate_key_pair();
 ///
 /// #[cfg(feature = "unsafe")]
 /// let mut shared_key = SharedKey::new(&private_key, &public_key);
+/// #[cfg(not(feature = "unsafe"))]
+/// let mut shared_key = SharedKey::new(private_key, &public_key);
 ///
 /// #[cfg(feature = "unsafe")]
 /// shared_key.hkdf(&salt);
