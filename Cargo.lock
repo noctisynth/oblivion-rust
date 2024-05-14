@@ -778,7 +778,6 @@ dependencies = [
  "proc-macro2",
  "pyo3",
  "rand",
- "rayon",
  "regex",
  "ring",
  "scrypt",

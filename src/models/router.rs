@@ -3,7 +3,6 @@ use super::handler::not_found;
 use super::session::Session;
 use crate::types::server;
 use anyhow::Result;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -19,6 +18,7 @@ impl Route {
         Self { handler }
     }
 
+    #[inline]
     pub fn get_handler(&self) -> Handler {
         self.handler.clone()
     }
@@ -45,14 +45,15 @@ impl RoutePath {
         }
     }
 
-    pub fn check(&self, olps: &str) -> Result<bool> {
+    #[inline]
+    pub fn check(&self, entrance: &str) -> Result<bool> {
         if self.route_type == RouteType::RegexPath {
             let regex = Regex::new(&self.route)?;
-            Ok(regex.is_match(olps))
+            Ok(regex.is_match(entrance))
         } else if self.route_type == RouteType::StartswithPath {
-            Ok(olps.starts_with(&self.route))
+            Ok(entrance.starts_with(&self.route))
         } else {
-            Ok(self.route == olps.trim_end_matches("/"))
+            Ok(self.route == entrance.trim_end_matches("/"))
         }
     }
 }
@@ -70,29 +71,21 @@ impl Router {
     }
 
     pub fn route(&mut self, path: RoutePath, handler: Handler) -> &mut Self {
-        self.routes.insert(path.clone(), Route { handler });
+        self.routes.insert(path, Route { handler });
         self
     }
 
-    pub fn regist(&mut self, path: RoutePath, route: Route) {
+    pub fn register(&mut self, path: RoutePath, route: Route) {
         let route = route;
-        self.routes.insert(path.clone(), route);
+        self.routes.insert(path, route);
     }
 
     pub fn get_handler(&self, path: &str) -> Result<Handler> {
-        let handler = self
-            .routes
-            .par_iter()
-            .find_any(|values| {
-                let (route_path, _) = values;
-                route_path.check(path).unwrap_or(false)
-            })
-            .map(|route| route.1.get_handler());
-
-        if let Some(route) = handler {
-            Ok(route)
-        } else {
-            Ok(not_found)
+        for (route_path, route) in self.routes.iter() {
+            if route_path.check(path)? {
+                return Ok(route.get_handler());
+            }
         }
+        Ok(not_found)
     }
 }

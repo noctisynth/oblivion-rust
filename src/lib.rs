@@ -60,7 +60,7 @@ pub mod models;
 macro_rules! path_route {
     ($router:expr, $path:expr => $handler:ident) => {{
         let route = $crate::models::router::Route::new($handler);
-        $router.regist(
+        $router.register(
             $crate::models::router::RoutePath::new($path, $crate::models::router::RouteType::Path),
             route,
         );
@@ -96,7 +96,7 @@ macro_rules! path_route {
 macro_rules! startswith_route {
     ($router:expr, $path:expr => $handler:ident) => {{
         let route = $crate::models::router::Route::new($handler);
-        $router.regist(
+        $router.register(
             $crate::models::router::RoutePath::new(
                 $path,
                 $crate::models::router::RouteType::StartswithPath,
@@ -137,7 +137,7 @@ macro_rules! startswith_route {
 macro_rules! regex_route {
     ($router:expr, $path:expr => $handler:ident) => {{
         let route = $crate::models::router::Route::new($handler);
-        $router.regist(
+        $router.register(
             $crate::models::router::RoutePath::new(
                 $path,
                 $crate::models::router::RouteType::RegexPath,
