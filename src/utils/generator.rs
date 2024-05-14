@@ -12,8 +12,8 @@ use p256::{ecdh::EphemeralSecret, PublicKey};
 #[cfg(not(feature = "unsafe"))]
 use ring::agreement::{agree_ephemeral, EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
-use ring::{aead::AES_128_GCM, rand::SecureRandom};
 use ring::rand::SystemRandom;
+use ring::{aead::AES_128_GCM, rand::SecureRandom};
 use scrypt::{scrypt, Params};
 use sha2::Sha256;
 
@@ -47,12 +47,19 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 ///
 /// ```rust
 /// use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
+/// use ring::agreement::{UnparsedPublicKey, X25519};
 ///
 /// let salt = generate_random_salt();
 /// #[cfg(feature = "unsafe")]
 /// let (private_key, public_key) = generate_key_pair().unwrap();
 /// #[cfg(not(feature = "unsafe"))]
 /// let (private_key, public_key) = generate_key_pair();
+///
+/// #[cfg(not(feature = "unsafe"))]
+/// let public_key: UnparsedPublicKey<Vec<u8>> = {
+///     let public_key_bytes = public_key.as_ref().to_vec();
+///     UnparsedPublicKey::new(&X25519, public_key_bytes)
+/// };
 ///
 /// #[cfg(feature = "unsafe")]
 /// let mut shared_key = SharedKey::new(&private_key, &public_key);
