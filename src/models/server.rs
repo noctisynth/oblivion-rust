@@ -19,6 +19,7 @@ use super::packet::{OED, OSC};
 use super::router::Router;
 use super::session::Session;
 
+#[inline]
 async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result<()> {
     #[cfg(feature = "perf")]
     let now = std::time::Instant::now();
@@ -147,7 +148,39 @@ pub async fn handle(router: Arc<Router>, stream: TcpStream, peer: SocketAddr) {
     );
 }
 
-/// Server Core Struct
+/// Oblivion Server
+///
+/// Oblivion uses the `tokio` library to handle TCP connections. The `Server` struct
+/// is responsible for creating and managing the TCP listener and handling incoming
+/// connections. The `handle` function is called for each incoming connection,
+/// which creates a new `Session` and handles the incoming data. The `Router`
+/// is used to determine which handler function to call based on the incoming
+/// request.
+///
+/// # Example
+///
+/// ```rust
+/// # use oblivion::models::server::Server;
+/// # use oblivion::models::router::Router;
+/// # use anyhow::Result;
+/// # async fn runner() -> Result<()> {
+/// let router = Router::new(); // Create an empty router
+/// // Create an oblivion server and bind it to 127.0.0.1:8080
+/// let server = Server::new("127.0.0.1", 0, router);
+/// server.run().await;
+/// # Ok(())
+/// # }
+///
+/// # #[tokio::main]
+/// # async fn main() {
+/// #     let future = tokio::spawn(async {
+/// #         if let Err(error) = runner().await {
+/// #             panic!("An error occurred: {}", error);
+/// #         }
+/// #     });
+/// #     future.abort();
+/// # }
+/// ```
 pub struct Server {
     host: String,
     port: i32,
