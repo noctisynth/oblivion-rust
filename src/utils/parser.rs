@@ -41,27 +41,27 @@ pub fn length(bytes: &[u8]) -> Result<[u8; 4], Exception> {
 /// ```rust
 /// use oblivion::utils::parser::OblivionPath;
 ///
-/// let olps = OblivionPath::new("oblivion://127.0.0.1:813/test").unwrap();
+/// let entrance = OblivionPath::new("oblivion://127.0.0.1:813/test").unwrap();
 ///
-/// assert_eq!("oblivion".to_string(), olps.get_protocol());
-/// assert_eq!("127.0.0.1".to_string(), olps.get_host());
-/// assert_eq!("813".to_string(), olps.get_port());
-/// assert_eq!("/test".to_string(), olps.get_olps());
+/// assert_eq!("oblivion".to_string(), entrance.get_protocol());
+/// assert_eq!("127.0.0.1".to_string(), entrance.get_host());
+/// assert_eq!("813".to_string(), entrance.get_port());
+/// assert_eq!("/test".to_string(), entrance.get_entrance());
 /// ```
 pub struct OblivionPath {
     protocol: String,
     host: String,
     port: String,
-    olps: String,
+    entrance: String,
 }
 
 impl OblivionPath {
-    pub fn new(obl_str: &str) -> Result<Self> {
+    pub fn new(path: &str) -> Result<Self> {
         let re = Regex::new(
-            r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<olps>.+)?$",
+            r"^(?P<protocol>oblivion)?(?:://)?(?P<host>[^:/]+)(:(?P<port>\d+))?(?P<entrance>.+)?$",
         )?;
 
-        if let Some(captures) = re.captures(obl_str) {
+        if let Some(captures) = re.captures(path) {
             let mut extracted_values: HashMap<&str, Option<&str>> = HashMap::new();
 
             for capture_name in re.capture_names() {
@@ -83,7 +83,7 @@ impl OblivionPath {
                 Some(result) => result.to_string(),
                 None => "80".to_string(),
             };
-            let olps = match extracted_values.get("olps").unwrap() {
+            let entrance = match extracted_values.get("entrance").unwrap() {
                 Some(result) => result.to_string(),
                 None => "/".to_string(),
             };
@@ -91,11 +91,11 @@ impl OblivionPath {
                 protocol,
                 host,
                 port,
-                olps,
+                entrance,
             })
         } else {
             Err(Error::from(Exception::InvalidOblivion {
-                olps: obl_str.to_string(),
+                entrance: path.to_string(),
             }))
         }
     }
@@ -104,8 +104,8 @@ impl OblivionPath {
         &self.protocol
     }
 
-    pub fn get_olps(&self) -> &str {
-        &self.olps
+    pub fn get_entrance(&self) -> &str {
+        &self.entrance
     }
 
     pub fn get_host(&self) -> &str {
@@ -121,7 +121,7 @@ impl OblivionPath {
 #[derive(Debug, Default)]
 pub struct OblivionRequest {
     pub(crate) method: String,
-    pub(crate) olps: String,
+    pub(crate) entrance: String,
     protocol: String,
     version: String,
     remote_addr: String,
@@ -131,7 +131,7 @@ pub struct OblivionRequest {
 
 impl OblivionRequest {
     pub fn new(header: &str) -> Result<Self, Exception> {
-        let (mut method, mut olps, mut protocol, mut version) =
+        let (mut method, mut entrance, mut protocol, mut version) =
             (String::new(), String::new(), String::new(), String::new());
         header
             .split_whitespace()
@@ -140,7 +140,7 @@ impl OblivionRequest {
                 Ok({
                     match index {
                         0 => method = part.to_string(),
-                        1 => olps = part.to_string(),
+                        1 => entrance = part.to_string(),
                         2 => {
                             let parts: Vec<&str> = part.split("/").collect();
                             if parts.len() == 2 {
@@ -156,7 +156,7 @@ impl OblivionRequest {
             })?;
         Ok(Self {
             method,
-            olps,
+            entrance,
             protocol,
             version,
             remote_addr: String::new(),
@@ -174,8 +174,8 @@ impl OblivionRequest {
         &self.method
     }
 
-    pub fn get_olps(&mut self) -> &str {
-        &self.olps
+    pub fn get_entrance(&mut self) -> &str {
+        &self.entrance
     }
 
     pub fn get_protocol(&mut self) -> &str {
