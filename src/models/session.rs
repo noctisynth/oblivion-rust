@@ -193,7 +193,7 @@ impl Session {
         let content = OED::new(&self.aes_key)
             .from_stream(socket)
             .await?
-            .get_data();
+            .take();
         let status_code = OSC::from_stream(socket).await?.status_code;
         let response = Response::new(None, content, None, status_code, flag);
 
