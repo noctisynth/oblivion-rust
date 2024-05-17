@@ -781,6 +781,7 @@ dependencies = [
  "regex",
  "ring",
  "scrypt",
+ "serde",
  "serde_json",
  "sha2",
  "thiserror",

@@ -3,6 +3,8 @@ use std::{collections::VecDeque, sync::Arc};
 
 use anyhow::{Error, Result};
 use tokio::{net::TcpStream, sync::Mutex, task::JoinHandle};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::exceptions::Exception;
 #[cfg(feature = "python")]
@@ -22,6 +24,7 @@ use super::session::Session;
 
 #[cfg_attr(feature = "python", pyclass)]
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Response {
     #[cfg_attr(feature = "python", pyo3(get))]
     pub header: Option<String>,
