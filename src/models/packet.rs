@@ -295,16 +295,16 @@ impl<'a> OED<'a> {
         stream.send(&self.plain_data()?).await?;
 
         self.chunk_count = 0;
-        let mut remaining_data = &self.encrypted_data[..];
-        while !remaining_data.is_empty() {
-            let chunk_size = remaining_data.len().min(1024);
-
-            let chunk_length = chunk_size as u32;
-
-            stream.send(&chunk_length.to_be_bytes()).await?;
-            stream.send(&remaining_data[..chunk_size]).await?;
-
-            remaining_data = &remaining_data[chunk_size..];
+        let mut chunks = self.encrypted_data.chunks(1024);
+        loop {
+            if let Some(chunk) = chunks.next() {
+                let chunk_size = chunk.len() as u32;
+                stream.send(&chunk_size.to_be_bytes()).await?;
+                stream.send(&chunk).await?;
+                self.chunk_count += 1;
+            } else {
+                break;
+            }
         }
         stream.send(&STOP_FLAG).await?;
 
@@ -320,7 +320,11 @@ impl<'a> OED<'a> {
         Ok(plain_bytes)
     }
 
-    pub fn get_data(&self) -> Vec<u8> {
-        self.data.clone().unwrap()
+    pub fn take(&mut self) -> Vec<u8> {
+        self.data.take().unwrap()
+    }
+
+    pub fn get_data(&self) -> &[u8] {
+        self.data.as_ref().unwrap()
     }
 }

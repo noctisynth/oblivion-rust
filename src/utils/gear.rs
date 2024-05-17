@@ -50,15 +50,16 @@ impl Socket {
         }
     }
 
+    #[inline]
     pub async fn peer_addr(&self) -> Result<SocketAddr> {
         Ok(self.writer.lock().await.peer_addr()?)
     }
 
+    #[inline]
     pub async fn recv_usize(&self) -> Result<usize> {
         let mut len_bytes = [0; 4];
         #[cfg(not(feature = "perf"))]
         self.reader.lock().await.read_exact(&mut len_bytes).await?;
-        #[cfg(feature = "perf")]
         #[cfg(feature = "perf")]
         {
             use colored::Colorize;
@@ -73,24 +74,28 @@ impl Socket {
         Ok(u32::from_be_bytes(len_bytes) as usize)
     }
 
+    #[inline]
     pub async fn recv_u32(&self) -> Result<u32> {
         let mut len_bytes = [0; 4];
         self.reader.lock().await.read_exact(&mut len_bytes).await?;
         Ok(u32::from_be_bytes(len_bytes))
     }
 
+    #[inline]
     pub async fn recv(&self, len: usize) -> Result<Vec<u8>> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
         self.reader.lock().await.read_exact(&mut recv_bytes).await?;
         Ok(recv_bytes)
     }
 
+    #[inline]
     pub async fn recv_str(&self, len: usize) -> Result<String> {
         let mut recv_bytes: Vec<u8> = vec![0; len];
         self.reader.lock().await.read_exact(&mut recv_bytes).await?;
         Ok(String::from_utf8(recv_bytes)?)
     }
 
+    #[inline]
     pub async fn send(&self, data: &[u8]) -> Result<()> {
         let mut writer = self.writer.lock().await;
         writer.write_all(&data).await?;
