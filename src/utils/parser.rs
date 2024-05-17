@@ -174,7 +174,7 @@ impl OblivionRequest {
         &self.method
     }
 
-    pub fn get_olps(&mut self) -> &str {
+    pub fn get_entrance(&mut self) -> &str {
         &self.entrance
     }
 
