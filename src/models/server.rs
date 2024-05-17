@@ -69,7 +69,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
 
     let socket = Arc::clone(&session.socket);
 
-    let callback = router.get_handler(&session.request.olps)?(session).await?;
+    let callback = router.get_handler(&session.request.entrance)?(session).await?;
 
     #[cfg(not(any(feature = "perf", feature = "bench")))]
     let status_code = callback.get_status_code()?;
@@ -135,7 +135,7 @@ pub async fn handle(router: Arc<Router>, stream: TcpStream, peer: SocketAddr) {
             eprintln!("{}", error.to_string().bright_red());
             #[cfg(feature = "bench")]
             {
-                eprintln!("An error occured in handling runtime unexpectedly.");
+                eprintln!("An error occurred in handling runtime unexpectedly.");
                 process::exit(1);
             }
         }

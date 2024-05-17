@@ -14,8 +14,8 @@ pub enum Exception {
     InvalidHeader(String),
     #[error("Link requests to the server are denied, either due to insufficient privileges or an attack on the server.")]
     ConnectionRefusedError,
-    #[error("Wrong Oblivion address: {olps}")]
-    InvalidOblivion { olps: String },
+    #[error("Wrong Oblivion address: {entrance}")]
+    InvalidOblivion { entrance: String },
     #[error("Exceeded expected packet size: {size}")]
     DataTooLarge { size: usize },
     #[error("Method [{method}] is not supported yet.")]

@@ -128,7 +128,7 @@ impl Client {
     #[must_use]
     pub async fn connect(entrance: &str) -> Result<Self> {
         let path = OblivionPath::new(&entrance)?;
-        let header = format!("CONNECT {} Oblivion/2.0", path.get_olps());
+        let header = format!("CONNECT {} Oblivion/2.0", path.get_entrance());
 
         let tcp = match TcpStream::connect(format!("{}:{}", path.get_host(), path.get_port())).await
         {
