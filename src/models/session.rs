@@ -19,6 +19,10 @@ use super::client::Response;
 use super::packet::{OED, OKE, OSC};
 use super::render::BaseResponse;
 
+/// Oblivion Full Duplex Session
+///
+/// This struct represents a full duplex session between the client and the server.
+/// It contains all the necessary information to handle the communication between the two.
 pub struct Session {
     pub header: String,
     #[cfg(feature = "unsafe")]
