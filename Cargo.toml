@@ -27,6 +27,7 @@ thiserror = "1"
 anyhow = "1.0"
 colored = "2.1"
 chrono = "0.4"
+socket2 = "0.5.7"
 
 # Optional
 pyo3 = { version = "0.20", optional = true }

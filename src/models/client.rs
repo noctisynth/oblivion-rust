@@ -2,9 +2,9 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use anyhow::{Error, Result};
-use tokio::{net::TcpStream, sync::Mutex, task::JoinHandle};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use tokio::{net::TcpStream, sync::Mutex, task::JoinHandle};
 
 use crate::exceptions::Exception;
 #[cfg(feature = "python")]
@@ -124,7 +124,6 @@ pub struct Client {
     pub entrance: String,
     pub path: OblivionPath,
     pub session: Arc<Session>,
-    pub responses: Arc<Mutex<VecDeque<Response>>>,
 }
 
 impl Client {
@@ -137,6 +136,8 @@ impl Client {
         {
             Ok(tcp) => {
                 tcp.set_ttl(20)?;
+                tcp.set_nodelay(true)?;
+                socket2::SockRef::from(&tcp).set_keepalive(true)?;
                 tcp
             }
             Err(_) => return Err(Error::from(Exception::ConnectionRefusedError)),
@@ -150,7 +151,6 @@ impl Client {
             entrance: entrance.to_string(),
             path,
             session: Arc::new(session),
-            responses: Arc::new(Mutex::new(VecDeque::new())),
         })
     }
 
@@ -166,9 +166,11 @@ impl Client {
         Ok(self.session.recv().await?)
     }
 
-    pub async fn listen(&self) -> Result<JoinHandle<Result<()>>> {
+    pub async fn listen(
+        &self,
+        responses: Arc<Mutex<VecDeque<Response>>>,
+    ) -> Result<JoinHandle<Result<()>>> {
         let session = Arc::clone(&self.session);
-        let responses = Arc::clone(&self.responses);
         Ok(tokio::spawn(async move {
             loop {
                 let mut wres = responses.lock().await;
@@ -193,12 +195,6 @@ impl Client {
             }
             Ok(())
         }))
-    }
-
-    pub async fn pop(&self) -> Option<Response> {
-        let responses = Arc::clone(&self.responses);
-        let mut wres = responses.lock().await;
-        wres.pop_front()
     }
 
     pub async fn close(&self) -> Result<()> {

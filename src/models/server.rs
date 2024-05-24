@@ -24,6 +24,9 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
     #[cfg(feature = "perf")]
     let now = std::time::Instant::now();
     stream.set_ttl(20)?;
+    stream.set_nodelay(true)?;
+    stream.set_linger(Some(std::time::Duration::from_secs(0)))?;
+    socket2::SockRef::from(&stream).set_keepalive(true)?;
     let mut session = Session::new(Socket::new(stream))?;
 
     if let Err(error) = session.handshake(1).await {
