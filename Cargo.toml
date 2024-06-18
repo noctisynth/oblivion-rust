@@ -36,7 +36,7 @@ p256 = { version = "0.13", features = ["ecdh"], optional = true }
 serde = { version = "1.0.203", features = ["derive"], optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.4", features = ["async_tokio", "html_reports"] }
+criterion = { version = "0.5", features = ["async_tokio", "html_reports"] }
 
 [lib]
 name = "oblivion"
