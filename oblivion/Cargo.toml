@@ -1,0 +1,79 @@
+[package]
+name = "oblivion"
+version = "2.1.0"
+authors = ["苏向夜 <fu050409@163.com>"]
+description = "Rust High Concurrency Implementation of Oblivion, an End-to-End Encryption Protocol Based on ECDHE Encryption Algorithm"
+license = "AGPL-3.0"
+repository = "https://github.com/noctisynth/oblivion-rust"
+
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+
+# Cryptography Algorithms
+rand = "0.8"
+ring = "0.17"
+sha2 = "0.10"
+scrypt = "0.11"
+hkdf = "0.12"
+
+# Utils
+oblivion-codegen = { workspace = true }
+regex = "1"
+serde_json = "1"
+proc-macro2 = "1"
+futures = "0.3"
+thiserror = "1"
+anyhow = "1.0"
+colored = "2.1"
+chrono = "0.4"
+socket2 = "0.5.7"
+
+# Optional
+pyo3 = { version = "0.21", optional = true }
+elliptic-curve = { version = "0.13", features = ["sec1"], optional = true }
+p256 = { version = "0.13", features = ["ecdh"], optional = true }
+serde = { version = "1.0.202", features = ["derive"], optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.4", features = ["async_tokio", "html_reports"] }
+
+[lib]
+name = "oblivion"
+
+[[bin]]
+name = "main"
+
+[features]
+bench = []
+perf = []
+unsafe = ["elliptic-curve", "p256"]
+python = ["pyo3"]
+serde = ["dep:serde"]
+
+[[bench]]
+name = "keygen"
+harness = false
+
+[[bench]]
+name = "socket"
+harness = false
+
+[[bench]]
+name = "rand"
+harness = false
+
+[[bench]]
+name = "parser"
+harness = false
+
+[[bench]]
+name = "packet"
+harness = false
+
+[[bench]]
+name = "router"
+harness = false
