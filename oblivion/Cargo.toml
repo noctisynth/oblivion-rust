@@ -36,10 +36,10 @@ socket2 = "0.5.7"
 pyo3 = { version = "0.21", optional = true }
 elliptic-curve = { version = "0.13", features = ["sec1"], optional = true }
 p256 = { version = "0.13", features = ["ecdh"], optional = true }
-serde = { version = "1.0.202", features = ["derive"], optional = true }
+serde = { version = "1.0.203", features = ["derive"], optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.4", features = ["async_tokio", "html_reports"] }
+criterion = { version = "0.5", features = ["async_tokio", "html_reports"] }
 
 [lib]
 name = "oblivion"
