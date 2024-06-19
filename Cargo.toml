@@ -6,8 +6,7 @@ members = [
 ]
 
 [workspace.dependencies]
-oblivion = { path = "oblivion" }
-oblivion-codegen = { path = "oblivion-codegen" }
+oblivion-codegen = { path = "oblivion-codegen", version = "0.2.0" }
 
 [profile.release]
 panic = "abort" # Strip expensive panic clean-up logic
