@@ -9,7 +9,7 @@ use syn::{parse_macro_input, ItemFn};
 ///
 /// 这是一个示例：
 ///
-/// ```rust
+/// ```rust, no_run
 /// use oblivion::oblivion_codegen::async_route;
 /// use oblivion::utils::parser::OblivionRequest;
 /// use oblivion::models::render::{BaseResponse, Response};
