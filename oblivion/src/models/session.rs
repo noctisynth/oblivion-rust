@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arc_swap::ArcSwap;
 use chrono::{DateTime, Local};
 use serde_json::Value;
-use tokio::sync::RwLock;
 
 #[cfg(feature = "unsafe")]
 use p256::{ecdh::EphemeralSecret, PublicKey};
@@ -37,7 +37,7 @@ pub struct Session {
     pub request_time: DateTime<Local>,
     pub request: OblivionRequest,
     pub socket: Arc<Socket>,
-    closed: RwLock<bool>,
+    closed: ArcSwap<bool>,
 }
 
 impl Session {
@@ -54,7 +54,7 @@ impl Session {
             request_time: Local::now(),
             request: Default::default(),
             socket: Arc::new(socket),
-            closed: RwLock::new(false),
+            closed: ArcSwap::new(Arc::new(false)),
         })
     }
 
@@ -71,7 +71,7 @@ impl Session {
             request_time: Local::now(),
             request: Default::default(),
             socket: Arc::new(socket),
-            closed: RwLock::new(false),
+            closed: ArcSwap::new(Arc::new(false)),
         })
     }
 
@@ -190,10 +190,7 @@ impl Session {
         let socket = &self.socket;
 
         let flag = OSC::from_stream(socket).await?.status_code;
-        let content = OED::new(&self.aes_key)
-            .from_stream(socket)
-            .await?
-            .take();
+        let content = OED::new(&self.aes_key).from_stream(socket).await?.take();
         let status_code = OSC::from_stream(socket).await?.status_code;
         let response = Response::new(None, content, None, status_code, flag);
 
@@ -205,7 +202,7 @@ impl Session {
 
     pub async fn close(&self) -> Result<()> {
         if !self.closed().await {
-            *self.closed.write().await = true;
+            self.closed.store(Arc::new(true));
             self.socket.close().await
         } else {
             Ok(())
@@ -213,7 +210,7 @@ impl Session {
     }
 
     pub async fn closed(&self) -> bool {
-        *self.closed.read().await
+        **self.closed.load()
     }
 
     pub fn header(&self) -> &str {

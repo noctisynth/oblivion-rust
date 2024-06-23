@@ -1,6 +1,6 @@
 //! # Oblivion exception
 //! All exceptions to the Oblivion function return `OblivionException`.
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 use pyo3::prelude::*;
 use ring::error::Unspecified;
 use scrypt::errors::InvalidOutputLen;
@@ -39,13 +39,13 @@ pub enum Exception {
     ConnectionClosed,
 }
 
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 #[pyclass]
 pub struct PyOblivionException {
     pub message: String,
 }
 
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 #[pymethods]
 impl PyOblivionException {
     #[new]
