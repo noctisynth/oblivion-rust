@@ -7,38 +7,38 @@ use serde::{Deserialize, Serialize};
 use tokio::{net::TcpStream, sync::Mutex, task::JoinHandle};
 
 use crate::exceptions::Exception;
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 use crate::exceptions::PyOblivionException;
 
 use crate::utils::gear::Socket;
 use crate::utils::parser::OblivionPath;
 
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 use pyo3::prelude::*;
-#[cfg(not(feature = "python"))]
+#[cfg(not(feature = "pyo3"))]
 use serde_json::{from_slice, Value};
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 use serde_json::{json, Value};
 
 use super::session::Session;
 
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "pyo3", pyclass)]
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Response {
-    #[cfg_attr(feature = "python", pyo3(get))]
+    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub header: Option<String>,
-    #[cfg_attr(feature = "python", pyo3(get))]
+    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub content: Vec<u8>,
-    #[cfg_attr(feature = "python", pyo3(get))]
+    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub entrance: Option<String>,
-    #[cfg_attr(feature = "python", pyo3(get))]
+    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub status_code: u32,
-    #[cfg_attr(feature = "python", pyo3(get))]
+    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub flag: u32,
 }
 
-#[cfg(not(feature = "python"))]
+#[cfg(not(feature = "pyo3"))]
 impl Response {
     pub fn new(
         header: Option<String>,
@@ -92,7 +92,7 @@ impl PartialEq for Response {
     }
 }
 
-#[cfg(feature = "python")]
+#[cfg(feature = "pyo3")]
 #[pymethods]
 impl Response {
     #[new]
