@@ -126,22 +126,19 @@ pub async fn handle(router: Arc<Router>, stream: TcpStream, peer: SocketAddr) {
     let now = Instant::now();
     #[cfg(feature = "perf")]
     println!("=================");
-    match _handle(&router, stream, peer).await {
-        Ok(()) => {}
-        Err(error) => {
-            eprintln!(
-                "{} <-> [{}] \"{}\" {}",
-                peer.ip().to_string().cyan(),
-                Local::now().format("%d/%m/%Y %H:%M:%S"),
-                "CONNECT - Oblivion/2.0".yellow(),
-                "501".red()
-            );
-            eprintln!("{}", error.to_string().bright_red());
-            #[cfg(feature = "bench")]
-            {
-                eprintln!("An error occurred in handling runtime unexpectedly.");
-                process::exit(1);
-            }
+    if let Err(error) = _handle(&router, stream, peer).await {
+        eprintln!(
+            "{} <-> [{}] \"{}\" {}",
+            peer.ip().to_string().cyan(),
+            Local::now().format("%d/%m/%Y %H:%M:%S"),
+            "CONNECT - Oblivion/2.0".yellow(),
+            "501".red()
+        );
+        eprintln!("{}", error.to_string().bright_red());
+        #[cfg(feature = "bench")]
+        {
+            eprintln!("An error occurred in handling runtime unexpectedly.");
+            process::exit(1);
         }
     }
     #[cfg(feature = "perf")]
