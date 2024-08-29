@@ -19,8 +19,8 @@ pub mod types;
 ///
 /// Oblivion utility classes provide key creation, data encryption and decryption, and request resolution processing methods.
 pub mod utils {
-    pub mod decryptor;
-    pub mod encryptor;
+    pub mod decrypt;
+    pub mod encrypt;
     pub mod gear;
     pub mod generator;
     pub mod parser;

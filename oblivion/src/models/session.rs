@@ -5,9 +5,6 @@ use arc_swap::ArcSwap;
 use chrono::{DateTime, Local};
 use serde_json::Value;
 
-#[cfg(feature = "unsafe")]
-use p256::{ecdh::EphemeralSecret, PublicKey};
-#[cfg(not(feature = "unsafe"))]
 use ring::agreement::{EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
 use crate::exceptions::Exception;
@@ -25,13 +22,7 @@ use super::render::BaseResponse;
 /// It contains all the necessary information to handle the communication between the two.
 pub struct Session {
     pub header: String,
-    #[cfg(feature = "unsafe")]
-    pub(crate) private_key: EphemeralSecret,
-    #[cfg(feature = "unsafe")]
-    pub(crate) public_key: PublicKey,
-    #[cfg(not(feature = "unsafe"))]
     pub(crate) private_key: Option<EphemeralPrivateKey>,
-    #[cfg(not(feature = "unsafe"))]
     pub(crate) public_key: PublicKey,
     pub(crate) aes_key: [u8; 16],
     pub request_time: DateTime<Local>,
@@ -45,9 +36,6 @@ impl Session {
         let (private_key, public_key) = generate_key_pair();
         Ok(Self {
             header: String::new(),
-            #[cfg(feature = "unsafe")]
-            private_key,
-            #[cfg(not(feature = "unsafe"))]
             private_key: Some(private_key),
             public_key,
             aes_key: Default::default(),
@@ -62,9 +50,6 @@ impl Session {
         let (private_key, public_key) = generate_key_pair();
         Ok(Self {
             header,
-            #[cfg(feature = "unsafe")]
-            private_key,
-            #[cfg(not(feature = "unsafe"))]
             private_key: Some(private_key),
             public_key,
             aes_key: Default::default(),
@@ -85,11 +70,7 @@ impl Session {
         #[cfg(feature = "perf")]
         println!("发送头时长: {}μs", now.elapsed().as_micros().to_string());
 
-        #[cfg(feature = "unsafe")]
-        let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
-        #[cfg(not(feature = "unsafe"))]
         let public_key = UnparsedPublicKey::new(&X25519, self.public_key.as_ref().to_vec());
-        #[cfg(not(feature = "unsafe"))]
         let mut oke = OKE::new(self.private_key.take(), public_key);
         oke.from_stream_with_salt(&socket).await?;
         self.aes_key = oke.get_aes_key();
@@ -126,11 +107,7 @@ impl Session {
 
         #[cfg(feature = "perf")]
         let now = std::time::Instant::now();
-        #[cfg(feature = "unsafe")]
-        let mut oke = OKE::new(Some(&self.private_key), Some(self.public_key))?;
-        #[cfg(not(feature = "unsafe"))]
         let public_key = UnparsedPublicKey::new(&X25519, self.public_key.as_ref().to_vec());
-        #[cfg(not(feature = "unsafe"))]
         let mut oke = OKE::new(self.private_key.take(), public_key);
         oke.to_stream_with_salt(&socket).await?;
         oke.from_stream(&socket).await?;
