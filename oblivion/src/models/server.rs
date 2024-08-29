@@ -228,6 +228,7 @@ impl Server {
             std::process::exit(0);
         });
 
+        #[cfg(not(feature = "bench"))]
         println!(
             "Oblivion version {}, using '{}'",
             VERSION.bright_yellow(),
