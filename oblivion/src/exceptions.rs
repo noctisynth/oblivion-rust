@@ -20,12 +20,6 @@ pub enum Exception {
     DataTooLarge { size: usize },
     #[error("Method [{method}] is not supported yet.")]
     UnsupportedMethod { method: String },
-    #[cfg(feature = "unsafe")]
-    #[error("Invalid public key: {error:?}")]
-    PublicKeyInvalid {
-        #[from]
-        error: elliptic_curve::Error,
-    },
     #[error("Exception during shared key generation: {error:?}")]
     InvalidOutputLen {
         #[from]
