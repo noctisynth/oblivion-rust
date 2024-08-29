@@ -228,13 +228,7 @@ impl Server {
             std::process::exit(0);
         });
 
-        #[cfg(feature = "unsafe")]
-        println!(
-            "Oblivion version {}, using '{}'",
-            VERSION.bright_yellow(),
-            "p256".bright_red()
-        );
-        #[cfg(all(not(feature = "unsafe"), not(feature = "bench")))]
+        #[cfg(not(feature = "bench"))]
         println!(
             "Oblivion version {}, using '{}'",
             VERSION.bright_yellow(),

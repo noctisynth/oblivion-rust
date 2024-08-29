@@ -3,20 +3,13 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
 use tokio::runtime::Runtime;
 
-#[cfg(feature = "unsafe")]
-use p256::{ecdh::EphemeralSecret, PublicKey};
-#[cfg(not(feature = "unsafe"))]
 use ring::agreement::{EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
 async fn hkdf(
-    #[cfg(feature = "unsafe")] private_key: EphemeralSecret,
-    #[cfg(not(feature = "unsafe"))] private_key: EphemeralPrivateKey,
+    private_key: EphemeralPrivateKey,
     public_key: PublicKey,
     salt: Vec<u8>,
 ) -> Result<()> {
-    #[cfg(feature = "unsafe")]
-    let mut shared_key = SharedKey::new(&private_key, &public_key);
-    #[cfg(not(feature = "unsafe"))]
     let mut shared_key = SharedKey::new(
         private_key,
         &UnparsedPublicKey::new(&X25519, public_key.as_ref().to_vec()),
@@ -26,14 +19,10 @@ async fn hkdf(
 }
 
 async fn scrypt(
-    #[cfg(feature = "unsafe")] private_key: EphemeralSecret,
-    #[cfg(not(feature = "unsafe"))] private_key: EphemeralPrivateKey,
+    private_key: EphemeralPrivateKey,
     public_key: PublicKey,
     salt: Vec<u8>,
 ) -> Result<()> {
-    #[cfg(feature = "unsafe")]
-    let mut shared_key = SharedKey::new(&private_key, &public_key);
-    #[cfg(not(feature = "unsafe"))]
     let mut shared_key = SharedKey::new(
         private_key,
         &UnparsedPublicKey::new(&X25519, public_key.as_ref().to_vec()),

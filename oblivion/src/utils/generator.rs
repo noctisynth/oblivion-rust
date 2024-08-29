@@ -5,11 +5,6 @@ extern crate ring;
 use anyhow::Result;
 use hkdf::Hkdf;
 
-#[cfg(feature = "unsafe")]
-use elliptic_curve::rand_core::OsRng;
-#[cfg(feature = "unsafe")]
-use p256::{ecdh::EphemeralSecret, PublicKey};
-#[cfg(not(feature = "unsafe"))]
 use ring::agreement::{agree_ephemeral, EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
 
 use ring::rand::SystemRandom;
@@ -29,19 +24,11 @@ use crate::exceptions::Exception;
 /// # use oblivion::utils::generator::generate_key_pair;
 /// let (private_key, public_key) = generate_key_pair();
 /// ```
-#[cfg(not(feature = "unsafe"))]
 pub fn generate_key_pair() -> (EphemeralPrivateKey, PublicKey) {
     let rng = SystemRandom::new();
     let private_key = EphemeralPrivateKey::generate(&X25519, &rng).unwrap();
     let public_key = private_key.compute_public_key().unwrap();
     (private_key, public_key)
-}
-
-#[cfg(feature = "unsafe")]
-pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
-    let private_key = EphemeralSecret::random(&mut OsRng);
-    let public_key = private_key.public_key();
-    Ok((private_key, public_key))
 }
 
 /// Generate a Shared Key
@@ -55,8 +42,7 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 /// ```rust
 /// # use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
 /// # use ring::agreement::{UnparsedPublicKey, X25519};
-/// # #[cfg(not(feature = "unsafe"))]
-/// # {
+///
 /// let salt = generate_random_salt();
 ///
 /// let (private_key, public_key) = generate_key_pair();
@@ -71,41 +57,14 @@ pub fn generate_key_pair() -> Result<(EphemeralSecret, PublicKey), Exception> {
 ///
 /// shared_key.hkdf(&salt); // Generate a shared key using HKDF
 /// shared_key.scrypt(&salt).unwrap(); // Generate a shared key using Scrypt
-/// # }
 /// ```
 ///
 /// Now oblivion uses `ring` instead of `p256` for ECC operations. The `SharedKey` struct is updated to use `ring` instead of `p256`.
-///
-/// If you still want to use a deprecated version of the library, you can use the following code:
-///
-/// ```rust
-/// # use oblivion::utils::generator::{generate_key_pair, generate_random_salt, SharedKey};
-/// # use ring::agreement::{UnparsedPublicKey, X25519};
-/// # #[cfg(feature = "unsafe")]
-/// # {
-/// let (private_key, public_key) = generate_key_pair().unwrap();
-/// let mut shared_key = SharedKey::new(&private_key, &public_key);
-///
-/// shared_key.hkdf(&salt); // Generate a shared key using HKDF
-/// shared_key.scrypt(&salt).unwrap(); // Generate a shared key using Scrypt
-/// # }
-/// ```
 pub struct SharedKey {
     shared_key: Vec<u8>,
 }
 
 impl SharedKey {
-    #[cfg(feature = "unsafe")]
-    pub fn new(private_key: &EphemeralSecret, public_key: &PublicKey) -> Self {
-        Self {
-            shared_key: private_key
-                .diffie_hellman(&public_key)
-                .raw_secret_bytes()
-                .to_vec(),
-        }
-    }
-
-    #[cfg(not(feature = "unsafe"))]
     pub fn new(
         private_key: EphemeralPrivateKey,
         public_key: &UnparsedPublicKey<Vec<u8>>,
