@@ -18,8 +18,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
     let func_block = &input.block;
 
     let expanded = quote! {
-        pub fn #func_name(#func_args) #func_return
-        {
+        pub fn #func_name(#func_args) #func_return {
             Box::pin(async move {
                 #func_block
             })
