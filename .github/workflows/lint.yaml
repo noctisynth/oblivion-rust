@@ -23,6 +23,6 @@ jobs:
         uses: streetsidesoftware/cspell-action@v6
         with:
           files: "**"
-          config: cspell.json
+          config: .cspell.json
           strict: true
           verbose: true
