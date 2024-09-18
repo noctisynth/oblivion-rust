@@ -18,7 +18,7 @@ use crate::exceptions::Exception;
 /// ```rust
 /// use oblivion::utils::parser::length;
 ///
-/// let vec = b"fw4rg45245ygergeqwrgqwerg342rg342gjisdu".to_vec();
+/// let vec = b"fw4rg45245yge8gew3rgq5erg342rg342gj2sdu".to_vec();
 ///
 /// assert_eq!((39 as u32).to_be_bytes(), length(&vec).unwrap());
 /// ```
