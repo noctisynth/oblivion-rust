@@ -20,7 +20,7 @@ impl Route {
 
     #[inline]
     pub fn get_handler(&self) -> Handler {
-        self.handler.clone()
+        self.handler
     }
 }
 
@@ -76,7 +76,6 @@ impl Router {
     }
 
     pub fn register(&mut self, path: RoutePath, route: Route) {
-        let route = route;
         self.routes.insert(path, route);
     }
 

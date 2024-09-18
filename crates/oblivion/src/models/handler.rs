@@ -8,11 +8,11 @@ use oblivion_codegen::async_route;
 ///
 /// Handling a non-existent route request.
 #[async_route]
-pub fn not_found(sess: Session) -> server::Result {
-    let olps = sess.request.get_ip();
+pub fn not_found(session: Session) -> server::Result {
+    let entrance = session.request.get_ip();
 
     Ok(BaseResponse::TextResponse(
-        format!("Path {} is not found, error with code 404.", olps),
+        format!("Path {} is not found, error with code 404.", entrance),
         404,
     ))
 }

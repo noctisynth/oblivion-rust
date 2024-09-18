@@ -163,7 +163,7 @@ impl Client {
     }
 
     pub async fn recv(&self) -> Result<Response> {
-        Ok(self.session.recv().await?)
+       self.session.recv().await
     }
 
     pub async fn close(&self) -> Result<()> {

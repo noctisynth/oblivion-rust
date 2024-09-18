@@ -1,7 +1,7 @@
 //! # Oblivion Packets Encapsulation
 use crate::exceptions::Exception;
-use crate::utils::decrypt::decrypt_bytes;
-use crate::utils::encrypt::{encrypt_bytes, encrypt_plaintext};
+use crate::utils::decryptor::decrypt_bytes;
+use crate::utils::encryptor::{encrypt_bytes, encrypt_plaintext};
 use crate::utils::gear::Socket;
 use crate::utils::generator::{generate_random_salt, SharedKey};
 use crate::utils::parser::length;
@@ -155,7 +155,7 @@ impl<'a> OED<'a> {
     }
 
     pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, Exception> {
-        (self.encrypted_data, self.tag, self.nonce) = encrypt_bytes(data, &self.aes_key)?;
+        (self.encrypted_data, self.tag, self.nonce) = encrypt_bytes(data, self.aes_key)?;
         Ok(self)
     }
 
@@ -188,7 +188,7 @@ impl<'a> OED<'a> {
         match decrypt_bytes(
             self.encrypted_data.clone(),
             &self.tag,
-            &self.aes_key,
+            self.aes_key,
             &self.nonce,
         ) {
             Ok(data) => {
@@ -203,16 +203,12 @@ impl<'a> OED<'a> {
         stream.send(&self.plain_data()?).await?;
 
         self.chunk_count = 0;
-        let mut chunks = self.encrypted_data.chunks(1024);
-        loop {
-            if let Some(chunk) = chunks.next() {
-                let chunk_size = chunk.len() as u32;
-                stream.send(&chunk_size.to_be_bytes()).await?;
-                stream.send(&chunk).await?;
-                self.chunk_count += 1;
-            } else {
-                break;
-            }
+        let chunks = self.encrypted_data.chunks(1024);
+        for chunk in chunks {
+            let chunk_size = chunk.len() as u32;
+            stream.send(&chunk_size.to_be_bytes()).await?;
+            stream.send(chunk).await?;
+            self.chunk_count += 1;
         }
         stream.send(&STOP_FLAG).await?;
 

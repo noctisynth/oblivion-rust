@@ -65,7 +65,7 @@ impl Session {
         let header = self.header.as_bytes();
         #[cfg(feature = "perf")]
         let now = tokio::time::Instant::now();
-        socket.send(&length(&header.to_vec())?).await?;
+        socket.send(&length(header)?).await?;
         socket.send(header).await?;
         #[cfg(feature = "perf")]
         println!("发送头时长: {}μs", now.elapsed().as_micros().to_string());
