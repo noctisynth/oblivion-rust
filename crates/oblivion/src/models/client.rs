@@ -1,10 +1,10 @@
 //! # Oblivion Client
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::{Error, Result};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use tokio::{net::TcpStream, sync::Mutex, task::JoinHandle};
+use tokio::net::TcpStream;
 
 use crate::exceptions::Exception;
 #[cfg(feature = "pyo3")]
@@ -77,17 +77,15 @@ impl PartialEq for Response {
                 && self.entrance == other.entrance
                 && self.status_code == other.status_code
                 && self.flag == other.flag
+        } else if other.entrance.is_none() {
+            false
         } else {
-            if other.entrance.is_none() {
-                false
-            } else {
-                self.header == other.header
-                    && self.content == other.content
-                    && self.entrance.as_ref().unwrap().trim_end_matches("/")
-                        == other.entrance.as_ref().unwrap().trim_end_matches("/")
-                    && self.status_code == other.status_code
-                    && self.flag == other.flag
-            }
+            self.header == other.header
+                && self.content == other.content
+                && self.entrance.as_ref().unwrap().trim_end_matches("/")
+                    == other.entrance.as_ref().unwrap().trim_end_matches("/")
+                && self.status_code == other.status_code
+                && self.flag == other.flag
         }
     }
 }
@@ -96,11 +94,11 @@ impl PartialEq for Response {
 #[pymethods]
 impl Response {
     #[new]
-    pub fn new(header: String, content: Vec<u8>, olps: String, status_code: u32) -> Self {
+    pub fn new(header: String, content: Vec<u8>, entrance: String, status_code: u32) -> Self {
         Self {
             header,
             content,
-            olps,
+            entrance,
             status_code,
         }
     }
@@ -114,7 +112,7 @@ impl Response {
             Ok(text) => Ok(text),
             Err(_) => Err(PyErr::new::<PyOblivionException, _>(format!(
                 "Invalid Oblivion: {}",
-                self.olps
+                self.entrance
             ))),
         }
     }
@@ -127,9 +125,8 @@ pub struct Client {
 }
 
 impl Client {
-    #[must_use]
     pub async fn connect(entrance: &str) -> Result<Self> {
-        let path = OblivionPath::new(&entrance)?;
+        let path = OblivionPath::new(entrance)?;
         let header = format!("CONNECT {} Oblivion/2.0", path.get_entrance());
 
         let tcp = match TcpStream::connect(format!("{}:{}", path.get_host(), path.get_port())).await
@@ -155,46 +152,15 @@ impl Client {
     }
 
     pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
-        Ok(self.session.send(data, status_code).await?)
+        self.session.send(data, status_code).await
     }
 
     pub async fn send_json(&self, json: Value, status_code: u32) -> Result<()> {
-        Ok(self.session.send_json(json, status_code).await?)
+        self.session.send_json(json, status_code).await
     }
 
     pub async fn recv(&self) -> Result<Response> {
-        Ok(self.session.recv().await?)
-    }
-
-    pub async fn listen(
-        &self,
-        responses: Arc<Mutex<VecDeque<Response>>>,
-    ) -> Result<JoinHandle<Result<()>>> {
-        let session = Arc::clone(&self.session);
-        Ok(tokio::spawn(async move {
-            loop {
-                let mut wres = responses.lock().await;
-                if !session.closed().await {
-                    match session.recv().await {
-                        Ok(res) => {
-                            if &res.flag == &1 {
-                                wres.push_back(res);
-                                break;
-                            }
-                            wres.push_back(res);
-                        }
-                        Err(e) => {
-                            if !session.closed().await {
-                                eprintln!("{:?}", e);
-                                session.close().await?;
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            Ok(())
-        }))
+       self.session.recv().await
     }
 
     pub async fn close(&self) -> Result<()> {

@@ -20,7 +20,7 @@ impl Route {
 
     #[inline]
     pub fn get_handler(&self) -> Handler {
-        self.handler.clone()
+        self.handler
     }
 }
 
@@ -63,6 +63,12 @@ pub struct Router {
     routes: HashMap<RoutePath, Route>,
 }
 
+impl Default for Router {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Router {
     pub fn new() -> Self {
         Self {
@@ -76,7 +82,6 @@ impl Router {
     }
 
     pub fn register(&mut self, path: RoutePath, route: Route) {
-        let route = route;
         self.routes.insert(path, route);
     }
 

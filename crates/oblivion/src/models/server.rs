@@ -57,7 +57,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
     let header = session.header().to_string();
     #[cfg(not(any(feature = "perf", feature = "bench")))]
     let ip_addr = session.get_ip().to_string();
-    let aes_key = session.aes_key.clone();
+    let aes_key = session.aes_key;
 
     #[cfg(not(any(feature = "perf", feature = "bench")))]
     println!(
@@ -111,7 +111,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
         header.green(),
         if status_code >= 500 {
             status_code.to_string().red()
-        } else if status_code < 500 && status_code >= 400 {
+        } else if (400..500).contains(&status_code) {
             status_code.to_string().yellow()
         } else {
             status_code.to_string().cyan()

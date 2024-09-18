@@ -18,7 +18,7 @@ use crate::exceptions::Exception;
 /// ```rust
 /// use oblivion::utils::parser::length;
 ///
-/// let vec = b"fw4rg45245ygergeqwrgqwerg342rg342gjisdu".to_vec();
+/// let vec = b"fw4rg45245yge8gew3rgq5erg342rg342gj2sdu".to_vec();
 ///
 /// assert_eq!((39 as u32).to_be_bytes(), length(&vec).unwrap());
 /// ```
@@ -64,11 +64,9 @@ impl OblivionPath {
         if let Some(captures) = re.captures(path) {
             let mut extracted_values: HashMap<&str, Option<&str>> = HashMap::new();
 
-            for capture_name in re.capture_names() {
-                if let Some(capture_name) = capture_name {
-                    let value = captures.name(capture_name).map(|m| m.as_str());
-                    extracted_values.insert(capture_name, value);
-                }
+            for capture_name in re.capture_names().flatten() {
+                let value = captures.name(capture_name).map(|m| m.as_str());
+                extracted_values.insert(capture_name, value);
             }
 
             let protocol = match extracted_values.get("protocol").unwrap() {
@@ -137,22 +135,21 @@ impl OblivionRequest {
             .split_whitespace()
             .enumerate()
             .try_for_each(|(index, part)| {
-                Ok({
-                    match index {
-                        0 => method = part.to_string(),
-                        1 => entrance = part.to_string(),
-                        2 => {
-                            let parts: Vec<&str> = part.split("/").collect();
-                            if parts.len() == 2 {
-                                protocol = parts[0].to_string();
-                                version = parts[1].to_string();
-                            } else {
-                                return Err(Exception::InvalidHeader(header.to_string()));
-                            }
+                match index {
+                    0 => method = part.to_string(),
+                    1 => entrance = part.to_string(),
+                    2 => {
+                        let parts: Vec<&str> = part.split("/").collect();
+                        if parts.len() == 2 {
+                            protocol = parts[0].to_string();
+                            version = parts[1].to_string();
+                        } else {
+                            return Err(Exception::InvalidHeader(header.to_string()));
                         }
-                        _ => return Err(Exception::InvalidHeader(header.to_string())),
-                    };
-                })
+                    }
+                    _ => return Err(Exception::InvalidHeader(header.to_string())),
+                };
+                Ok(())
             })?;
         Ok(Self {
             method,

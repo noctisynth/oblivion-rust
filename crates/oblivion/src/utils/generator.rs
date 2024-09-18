@@ -79,7 +79,7 @@ impl SharedKey {
         let mut aes_key = [0u8; 16];
         match scrypt(
             &self.shared_key,
-            &salt,
+            salt,
             &Params::new(12, 8, 1, 16).unwrap(),
             &mut aes_key,
         ) {
