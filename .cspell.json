@@ -1,0 +1,19 @@
+{
+    "words": [
+        "backports",
+        "chrono",
+        "codegen",
+        "decryptor",
+        "Deque",
+        "encryptor",
+        "hkdf",
+        "keepalive",
+        "Noctisynth",
+        "nodelay",
+        "pyclass",
+        "pymethods",
+        "rsproxy",
+        "startswith",
+        "thiserror"
+    ]
+}

@@ -1,6 +1,6 @@
 //! # Oblivion
 //!
-//! Oblivion is a Rust implementation of Oblivion,an end-to-end encryption protocol developed by Turbolane to secure information.
+//! Oblivion is a Rust implementation of Oblivion, an end-to-end encryption protocol developed by Noctisynth to secure information.
 //! It greatly improves the security, stability, and concurrency of Oblivion based on the Python implementation.
 //!
 //! Since the encryption algorithm required in the Oblivion protocol is the ECDHE algorithm,
@@ -19,8 +19,8 @@ pub mod types;
 ///
 /// Oblivion utility classes provide key creation, data encryption and decryption, and request resolution processing methods.
 pub mod utils {
-    pub mod decrypt;
-    pub mod encrypt;
+    pub mod decryptor;
+    pub mod encryptor;
     pub mod gear;
     pub mod generator;
     pub mod parser;
@@ -44,9 +44,9 @@ pub mod models;
 /// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut sess: Session) -> Response {
+/// fn welcome(mut session: Session) -> Response {
 ///     Ok(BaseResponse::TextResponse(
-///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", sess.get_ip()),
+///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
 ///        200,
 ///     ))
 /// }
@@ -80,9 +80,9 @@ macro_rules! path_route {
 /// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut sess: Session) -> Response {
+/// fn welcome(mut session: Session) -> Response {
 ///     Ok(BaseResponse::TextResponse(
-///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", sess.get_ip()),
+///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
 ///        200,
 ///     ))
 /// }
@@ -119,9 +119,9 @@ macro_rules! startswith_route {
 /// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut sess: Session) -> Response {
+/// fn welcome(mut session: Session) -> Response {
 ///     Ok(BaseResponse::TextResponse(
-///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", sess.get_ip()),
+///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
 ///        200,
 ///     ))
 /// }
