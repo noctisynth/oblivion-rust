@@ -77,17 +77,15 @@ impl PartialEq for Response {
                 && self.entrance == other.entrance
                 && self.status_code == other.status_code
                 && self.flag == other.flag
+        } else if other.entrance.is_none() {
+            false
         } else {
-            if other.entrance.is_none() {
-                false
-            } else {
-                self.header == other.header
-                    && self.content == other.content
-                    && self.entrance.as_ref().unwrap().trim_end_matches("/")
-                        == other.entrance.as_ref().unwrap().trim_end_matches("/")
-                    && self.status_code == other.status_code
-                    && self.flag == other.flag
-            }
+            self.header == other.header
+                && self.content == other.content
+                && self.entrance.as_ref().unwrap().trim_end_matches("/")
+                    == other.entrance.as_ref().unwrap().trim_end_matches("/")
+                && self.status_code == other.status_code
+                && self.flag == other.flag
         }
     }
 }
@@ -127,9 +125,8 @@ pub struct Client {
 }
 
 impl Client {
-    #[must_use]
     pub async fn connect(entrance: &str) -> Result<Self> {
-        let path = OblivionPath::new(&entrance)?;
+        let path = OblivionPath::new(entrance)?;
         let header = format!("CONNECT {} Oblivion/2.0", path.get_entrance());
 
         let tcp = match TcpStream::connect(format!("{}:{}", path.get_host(), path.get_port())).await
@@ -155,11 +152,11 @@ impl Client {
     }
 
     pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
-        Ok(self.session.send(data, status_code).await?)
+        self.session.send(data, status_code).await
     }
 
     pub async fn send_json(&self, json: Value, status_code: u32) -> Result<()> {
-        Ok(self.session.send_json(json, status_code).await?)
+        self.session.send_json(json, status_code).await
     }
 
     pub async fn recv(&self) -> Result<Response> {

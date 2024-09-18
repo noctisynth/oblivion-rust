@@ -11,24 +11,19 @@ use ring::rand::SecureRandom;
 use ring::rand::SystemRandom;
 
 use crate::exceptions::Exception;
+use crate::types::EncryptedData;
 
 use super::gear::AbsoluteNonceSequence;
 
 /// Encrypt plaintext using AES
-pub fn encrypt_plaintext(
-    string: String,
-    aes_key: &[u8],
-) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), Exception> {
+pub fn encrypt_plaintext(string: String, aes_key: &[u8]) -> Result<EncryptedData, Exception> {
     let data = string.as_bytes().to_owned();
     encrypt_bytes(data, aes_key)
 }
 
 /// Encrypt binary data using AES
-pub fn encrypt_bytes(
-    mut bytes: Vec<u8>,
-    aes_key: &[u8],
-) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), Exception> {
-    let unbound_key = match UnboundKey::new(&AES_128_GCM, &aes_key) {
+pub fn encrypt_bytes(mut bytes: Vec<u8>, aes_key: &[u8]) -> Result<EncryptedData, Exception> {
+    let unbound_key = match UnboundKey::new(&AES_128_GCM, aes_key) {
         Ok(key) => key,
         Err(error) => return Err(Exception::EncryptError { error }),
     };

@@ -98,7 +98,7 @@ impl Socket {
     #[inline]
     pub async fn send(&self, data: &[u8]) -> Result<()> {
         let mut writer = self.writer.lock().await;
-        writer.write_all(&data).await?;
+        writer.write_all(data).await?;
         writer.flush().await?;
         Ok(())
     }

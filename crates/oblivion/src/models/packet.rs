@@ -138,20 +138,19 @@ impl<'a> OED<'a> {
     }
 
     pub fn from_json_or_string(&mut self, json_or_str: String) -> Result<&mut Self, Exception> {
-        (self.encrypted_data, self.tag, self.nonce) =
-            encrypt_plaintext(json_or_str, &self.aes_key)?;
+        (self.encrypted_data, self.tag, self.nonce) = encrypt_plaintext(json_or_str, self.aes_key)?;
         Ok(self)
     }
 
     pub fn from_dict(&mut self, dict: Value) -> Result<&mut Self, Exception> {
         (self.encrypted_data, self.tag, self.nonce) =
-            encrypt_plaintext(dict.to_string(), &self.aes_key)?;
+            encrypt_plaintext(dict.to_string(), self.aes_key)?;
         Ok(self)
     }
 
-    pub fn from_encrypted_data(&mut self, data: Vec<u8>) -> Result<&mut Self, ()> {
+    pub fn from_encrypted_data(&mut self, data: Vec<u8>) -> &mut Self {
         self.encrypted_data = data;
-        Ok(self)
+        self
     }
 
     pub fn from_bytes(&mut self, data: Vec<u8>) -> Result<&mut Self, Exception> {

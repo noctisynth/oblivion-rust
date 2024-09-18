@@ -147,4 +147,4 @@ macro_rules! regex_route {
     }};
 }
 
-pub static VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub static VERSION: &str = env!("CARGO_PKG_VERSION");
