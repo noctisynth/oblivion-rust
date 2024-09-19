@@ -1,6 +1,6 @@
 [package]
 name = "oblivion"
-version = "2.1.1"
+version = "2.2.0"
 authors = ["苏向夜 <fu050409@163.com>"]
 description = "Rust High Concurrency Implementation of Oblivion, an End-to-End Encryption Protocol Based on ECDHE Encryption Algorithm"
 license = "AGPL-3.0"
