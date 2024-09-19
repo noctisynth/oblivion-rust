@@ -15,6 +15,9 @@ pub mod exceptions;
 /// # Oblivion Export Types
 pub mod types;
 
+/// # Oblivion Prelude
+pub mod prelude;
+
 /// # Oblivion Utilities
 ///
 /// Oblivion utility classes provide key creation, data encryption and decryption, and request resolution processing methods.
@@ -38,13 +41,13 @@ pub mod models;
 /// ```rust
 /// use oblivion::path_route;
 /// use oblivion::models::render::BaseResponse;
-/// use oblivion::types::server::Response;
+/// use oblivion::types::ServerResponse;
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 /// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut session: Session) -> Response {
+/// fn welcome(mut session: Session) -> ServerResponse {
 ///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
 ///        200,
@@ -74,13 +77,13 @@ macro_rules! path_route {
 /// ```rust
 /// use oblivion::startswith_route;
 /// use oblivion::models::render::BaseResponse;
-/// use oblivion::types::server::Response;
+/// use oblivion::types::ServerResponse;
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 /// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut session: Session) -> Response {
+/// fn welcome(mut session: Session) -> ServerResponse {
 ///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
 ///        200,
@@ -113,13 +116,13 @@ macro_rules! startswith_route {
 /// ```rust
 /// use oblivion::regex_route;
 /// use oblivion::models::render::BaseResponse;
-/// use oblivion::types::server::Response;
+/// use oblivion::types::ServerResponse;
 /// use oblivion_codegen::async_route;
 /// use oblivion::models::router::Router;
 /// use oblivion::models::session::Session;
 ///
 /// #[async_route]
-/// fn welcome(mut session: Session) -> Response {
+/// fn welcome(mut session: Session) -> ServerResponse {
 ///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
 ///        200,

@@ -1,12 +1,10 @@
 //! # Oblivion Router
+use crate::types::Handler;
+
 use super::handler::not_found;
-use super::session::Session;
-use crate::types::server;
 use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
-
-pub type Handler = fn(Session) -> server::Result;
 
 #[derive(Clone)]
 pub struct Route {
