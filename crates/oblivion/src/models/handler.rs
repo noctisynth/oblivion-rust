@@ -11,8 +11,8 @@ use oblivion_codegen::internal_handler;
 pub fn not_found(session: Session) -> ServerResponse {
     let entrance = session.request.get_ip();
 
-    Ok(BaseResponse::TextResponse(
-        format!("Path {} is not found, error with code 404.", entrance),
-        404,
-    ))
+    Ok(BaseResponse::TextResponse(format!(
+        "Path {} is not found, error with code 404.",
+        entrance
+    )))
 }

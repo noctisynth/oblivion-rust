@@ -18,7 +18,7 @@ jobs:
       - name: Install Clippy
         run: rustup component add clippy
       - name: Run Clippy
-        run: cargo clippy --all-targets # Without `--all-features` because it's not updated yet.
+        run: cargo clippy --all-targets -- -D warnings # Without `--all-features` because it's not updated yet.
       - name: Code Spell Check
         uses: streetsidesoftware/cspell-action@v6
         with:

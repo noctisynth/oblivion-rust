@@ -50,7 +50,6 @@ pub mod models;
 /// fn welcome(mut session: Session) -> ServerResponse {
 ///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
-///        200,
 ///     ))
 /// }
 ///
@@ -86,7 +85,6 @@ macro_rules! path_route {
 /// fn welcome(mut session: Session) -> ServerResponse {
 ///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
-///        200,
 ///     ))
 /// }
 ///
@@ -125,7 +123,6 @@ macro_rules! startswith_route {
 /// fn welcome(mut session: Session) -> ServerResponse {
 ///     Ok(BaseResponse::TextResponse(
 ///        format!("欢迎进入信息绝对安全区, 来自[{}]的朋友", session.get_ip()),
-///        200,
 ///     ))
 /// }
 ///

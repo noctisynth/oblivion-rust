@@ -76,13 +76,9 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                         }
                     }
                 } else {
-                    match type_path.path.segments[0].ident.to_string().as_str() {
-                        _ => {
-                            return TokenStream::from(
-                                quote! { compile_error!("Unsupported complex path like return type"); },
-                            );
-                        }
-                    }
+                    return TokenStream::from(
+                        quote! { compile_error!("Unsupported complex path like return type"); },
+                    );
                 }
             }
             _ => return TokenStream::from(quote! { compile_error!("Unsupported return type"); }),
@@ -100,7 +96,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                 let result = async move {
                     #input_block
                 }.await;
-                Ok(BaseResponse::TextResponse(result, 200))
+                Ok(BaseResponse::TextResponse(result))
             })
         },
         ReturnType::Json => quote! {
@@ -108,7 +104,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                 let result = async move {
                     #input_block
                 }.await;
-                Ok(BaseResponse::JsonResponse(result, 200))
+                Ok(BaseResponse::JsonResponse(result))
             })
         },
         ReturnType::Result(return_type) => match *return_type {
@@ -122,7 +118,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                     let result = async move {
                         #input_block
                     }.await?;
-                    Ok(BaseResponse::TextResponse(result, 200))
+                    Ok(BaseResponse::TextResponse(result))
                 })
             },
             ReturnType::Json => todo!(),

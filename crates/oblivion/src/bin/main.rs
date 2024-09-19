@@ -36,17 +36,15 @@ fn welcome(session: Session) -> Result<String> {
 fn json(_session: Session) -> ServerResponse {
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "只身堕入极暗之永夜, 以期再世涅槃之阳光"}),
-        200,
     ))
 }
 
 #[async_route]
 async fn alive(session: Session) -> ServerResponse {
-    session.send("test".into(), 200).await?;
+    session.send("test".into()).await?;
     assert_eq!(session.recv().await?.text()?, "test");
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "结束"}),
-        200,
     ))
 }
 
@@ -56,7 +54,7 @@ fn server_callback(res: Response, session: Arc<Session>) -> BoxFuture<'static, b
         if res.text().unwrap() == "test_end" {
             false
         } else {
-            session.send("server".into(), 200).await.unwrap();
+            session.send("server".into()).await.unwrap();
             true
         }
     })
@@ -90,17 +88,17 @@ async fn main() -> Result<()> {
         "socket" => {
             let client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
             client.recv().await?.text()?;
-            client.send("test".as_bytes().to_vec(), 200).await?;
+            client.send("test".as_bytes().to_vec()).await?;
             client.recv().await?.json()?;
             client.close().await?;
         }
         "callback" => {
             let client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
-            client.send("test".as_bytes().to_vec(), 200).await?;
+            client.send("test".as_bytes().to_vec()).await?;
             client.recv().await?.text()?;
-            client.send("test".as_bytes().to_vec(), 200).await?;
+            client.send("test".as_bytes().to_vec()).await?;
             client.recv().await?.text()?;
-            client.send("test_end".as_bytes().to_vec(), 200).await?;
+            client.send("test_end".as_bytes().to_vec()).await?;
             let res = client.recv().await?.json()?;
             println!("{}", res);
             client.close().await?;
