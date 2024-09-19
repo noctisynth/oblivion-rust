@@ -76,13 +76,9 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                         }
                     }
                 } else {
-                    match type_path.path.segments[0].ident.to_string().as_str() {
-                        _ => {
-                            return TokenStream::from(
-                                quote! { compile_error!("Unsupported complex path like return type"); },
-                            );
-                        }
-                    }
+                    return TokenStream::from(
+                        quote! { compile_error!("Unsupported complex path like return type"); },
+                    );
                 }
             }
             _ => return TokenStream::from(quote! { compile_error!("Unsupported return type"); }),
