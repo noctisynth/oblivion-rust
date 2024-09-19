@@ -15,6 +15,9 @@ pub mod exceptions;
 /// # Oblivion Export Types
 pub mod types;
 
+/// # Oblivion Prelude
+pub mod prelude;
+
 /// # Oblivion Utilities
 ///
 /// Oblivion utility classes provide key creation, data encryption and decryption, and request resolution processing methods.

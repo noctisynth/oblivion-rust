@@ -6,8 +6,10 @@ use chrono::{DateTime, Local};
 use serde_json::Value;
 
 use ring::agreement::{EphemeralPrivateKey, PublicKey, UnparsedPublicKey, X25519};
+use tokio::task::JoinHandle;
 
 use crate::exceptions::Exception;
+use crate::types::Callback;
 use crate::utils::gear::Socket;
 use crate::utils::generator::generate_key_pair;
 use crate::utils::parser::{length, OblivionRequest};
@@ -29,6 +31,7 @@ pub struct Session {
     pub request: OblivionRequest,
     pub socket: Arc<Socket>,
     closed: ArcSwap<bool>,
+    callback: Arc<Option<Callback>>,
 }
 
 impl Session {
@@ -43,6 +46,7 @@ impl Session {
             request: Default::default(),
             socket: Arc::new(socket),
             closed: ArcSwap::new(Arc::new(false)),
+            callback: Arc::new(None),
         })
     }
 
@@ -57,10 +61,12 @@ impl Session {
             request: Default::default(),
             socket: Arc::new(socket),
             closed: ArcSwap::new(Arc::new(false)),
+            callback: Arc::new(None),
         })
     }
 
-    pub async fn first_hand(&mut self) -> Result<()> {
+    #[inline]
+    async fn first_hand(&mut self) -> Result<()> {
         let socket = Arc::clone(&self.socket);
         let header = self.header.as_bytes();
         #[cfg(feature = "perf")]
@@ -78,7 +84,8 @@ impl Session {
         Ok(())
     }
 
-    pub async fn second_hand(&mut self) -> Result<()> {
+    #[inline]
+    async fn second_hand(&mut self) -> Result<()> {
         #[cfg(feature = "perf")]
         let now = tokio::time::Instant::now();
         #[cfg(feature = "perf")]
@@ -177,6 +184,30 @@ impl Session {
         Ok(response)
     }
 
+    pub fn set_callback(&mut self, callback: Callback) {
+        self.callback = Arc::new(Some(callback));
+    }
+
+    pub async fn listen(self: Arc<Self>) -> Result<JoinHandle<()>> {
+        let callback = Arc::clone(&self.callback);
+        let future = tokio::spawn(async move {
+            while !self.closed().await {
+                let response = self.recv().await.unwrap();
+                if let Some(callback) = &*callback {
+                    if !callback(response, self.clone()).await {
+                        break;
+                    };
+                }
+            }
+        });
+        Ok(future)
+    }
+
+    pub async fn recv_json(&self) -> Result<Value> {
+        let response = self.recv().await?;
+        Ok(serde_json::from_slice(&response.content)?)
+    }
+
     pub async fn close(&self) -> Result<()> {
         if !self.closed().await {
             self.closed.store(Arc::new(true));
@@ -186,14 +217,17 @@ impl Session {
         }
     }
 
+    #[inline]
     pub async fn closed(&self) -> bool {
         **self.closed.load()
     }
 
+    #[inline]
     pub fn header(&self) -> &str {
         &self.header
     }
 
+    #[inline]
     pub fn get_ip(&self) -> &str {
         self.request.get_ip()
     }

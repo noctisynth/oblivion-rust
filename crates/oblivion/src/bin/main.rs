@@ -1,38 +1,39 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use futures::future::BoxFuture;
 use oblivion::models::client::Client;
 use oblivion::models::render::BaseResponse;
 use oblivion::models::router::{RoutePath, RouteType, Router};
 use oblivion::models::server::Server;
 use oblivion::models::session::Session;
 use oblivion::path_route;
-use oblivion::types::server;
+use oblivion::types::Response;
 use oblivion_codegen::async_route;
 use serde_json::json;
 use std::env::args;
+use std::sync::Arc;
 use tokio::time::Instant;
 
 #[async_route]
-fn handler(_sess: Session) -> server::Result {
-    Ok(BaseResponse::TextResponse(
-        "每一个人都应该拥有守护信息与获得真实信息的神圣权利, 任何与之对抗的都是我们的敌人"
-            .to_string(),
-        200,
+fn handler(_session: Session) -> String {
+    "每一个人都应该拥有守护信息与获得真实信息的神圣权利, \
+    任何与之对抗的都是我们的敌人"
+        .to_string()
+}
+
+#[async_route]
+fn welcome(session: Session) -> Result<String> {
+    let ip_address = session.request.get_ip();
+    if ip_address != "127.0.0.1" {
+        return Err(anyhow!("禁止访问"));
+    }
+    Ok(format!(
+        "欢迎进入信息绝对安全区, 来自[{}]的朋友",
+        session.request.get_ip()
     ))
 }
 
 #[async_route]
-fn welcome(sess: Session) -> server::Result {
-    Ok(BaseResponse::TextResponse(
-        format!(
-            "欢迎进入信息绝对安全区, 来自[{}]的朋友",
-            sess.request.get_ip()
-        ),
-        200,
-    ))
-}
-
-#[async_route]
-fn json(_sess: Session) -> server::Result {
+fn json(_session: Session) -> ServerResponse {
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "只身堕入极暗之永夜, 以期再世涅槃之阳光"}),
         200,
@@ -40,13 +41,33 @@ fn json(_sess: Session) -> server::Result {
 }
 
 #[async_route]
-async fn alive(sess: Session) -> server::Result {
-    sess.send("test".into(), 200).await?;
-    assert_eq!(sess.recv().await?.text()?, "test");
+async fn alive(session: Session) -> ServerResponse {
+    session.send("test".into(), 200).await?;
+    assert_eq!(session.recv().await?.text()?, "test");
     Ok(BaseResponse::JsonResponse(
         json!({"status": true, "msg": "结束"}),
         200,
     ))
+}
+
+fn server_callback(res: Response, session: Arc<Session>) -> BoxFuture<'static, bool> {
+    Box::pin(async move {
+        println!("callback: {}", res.text().unwrap());
+        if res.text().unwrap() == "test_end" {
+            false
+        } else {
+            session.send("server".into(), 200).await.unwrap();
+            true
+        }
+    })
+}
+
+#[async_route]
+async fn callback_handler(mut session: Session) -> Value {
+    session.set_callback(Arc::new(server_callback));
+    let session_arc = Arc::new(session);
+    session_arc.listen().await.unwrap().await.unwrap();
+    json!({"status": "close"})
 }
 
 #[tokio::main]
@@ -73,6 +94,17 @@ async fn main() -> Result<()> {
             client.recv().await?.json()?;
             client.close().await?;
         }
+        "callback" => {
+            let client = Client::connect(&format!("127.0.0.1:7076{}", args[2])).await?;
+            client.send("test".as_bytes().to_vec(), 200).await?;
+            client.recv().await?.text()?;
+            client.send("test".as_bytes().to_vec(), 200).await?;
+            client.recv().await?.text()?;
+            client.send("test_end".as_bytes().to_vec(), 200).await?;
+            let res = client.recv().await?.json()?;
+            println!("{}", res);
+            client.close().await?;
+        }
         "serve" => {
             let mut router = Router::new();
 
@@ -81,12 +113,13 @@ async fn main() -> Result<()> {
             path_route!(router, "/welcome" => welcome);
             path_route!(router, "/json" => json);
             path_route!(router, "/alive" => alive);
+            path_route!(router, "/callback" => callback_handler);
 
             let server = Server::new("0.0.0.0", 7076, router);
             server.run().await?;
         }
         _ => {
-            print!("未知的指令: {}", args[1]);
+            println!("未知的指令: {}", args[1]);
         }
     }
 
