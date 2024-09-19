@@ -8,12 +8,14 @@
         "encryptor",
         "hkdf",
         "keepalive",
+        "keygen",
         "Noctisynth",
         "nodelay",
         "pyclass",
         "pymethods",
         "rsproxy",
         "rustc",
+        "serde",
         "startswith",
         "thiserror"
     ]

@@ -6,7 +6,7 @@ members = [
 ]
 
 [workspace.dependencies]
-oblivion-codegen = { path = "crates/oblivion-codegen", version = "0.2.0" }
+oblivion-codegen = { path = "crates/oblivion-codegen", version = "0.3.0"}
 futures = { version = "0.3" }
 proc-macro2 = { version = "1" }
 
