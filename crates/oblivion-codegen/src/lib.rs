@@ -100,7 +100,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                 let result = async move {
                     #input_block
                 }.await;
-                Ok(BaseResponse::TextResponse(result, 200))
+                Ok(BaseResponse::TextResponse(result))
             })
         },
         ReturnType::Json => quote! {
@@ -108,7 +108,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                 let result = async move {
                     #input_block
                 }.await;
-                Ok(BaseResponse::JsonResponse(result, 200))
+                Ok(BaseResponse::JsonResponse(result))
             })
         },
         ReturnType::Result(return_type) => match *return_type {
@@ -122,7 +122,7 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                     let result = async move {
                         #input_block
                     }.await?;
-                    Ok(BaseResponse::TextResponse(result, 200))
+                    Ok(BaseResponse::TextResponse(result))
                 })
             },
             ReturnType::Json => todo!(),

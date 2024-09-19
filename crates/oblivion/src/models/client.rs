@@ -33,8 +33,6 @@ pub struct Response {
     #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub entrance: Option<String>,
     #[cfg_attr(feature = "pyo3", pyo3(get))]
-    pub status_code: u32,
-    #[cfg_attr(feature = "pyo3", pyo3(get))]
     pub flag: u32,
 }
 
@@ -44,20 +42,14 @@ impl Response {
         header: Option<String>,
         content: Vec<u8>,
         entrance: Option<String>,
-        status_code: u32,
         flag: u32,
     ) -> Self {
         Self {
             header,
             content,
             entrance,
-            status_code,
             flag,
         }
-    }
-
-    pub fn ok(&self) -> bool {
-        self.status_code < 400
     }
 
     pub fn text(&self) -> Result<String> {
@@ -75,7 +67,6 @@ impl PartialEq for Response {
             self.header == other.header
                 && self.content == other.content
                 && self.entrance == other.entrance
-                && self.status_code == other.status_code
                 && self.flag == other.flag
         } else if other.entrance.is_none() {
             false
@@ -84,7 +75,6 @@ impl PartialEq for Response {
                 && self.content == other.content
                 && self.entrance.as_ref().unwrap().trim_end_matches("/")
                     == other.entrance.as_ref().unwrap().trim_end_matches("/")
-                && self.status_code == other.status_code
                 && self.flag == other.flag
         }
     }
@@ -151,16 +141,16 @@ impl Client {
         })
     }
 
-    pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
-        self.session.send(data, status_code).await
+    pub async fn send(&self, data: Vec<u8>) -> Result<()> {
+        self.session.send(data).await
     }
 
-    pub async fn send_json(&self, json: Value, status_code: u32) -> Result<()> {
-        self.session.send_json(json, status_code).await
+    pub async fn send_json(&self, json: Value) -> Result<()> {
+        self.session.send_json(json).await
     }
 
     pub async fn recv(&self) -> Result<Response> {
-       self.session.recv().await
+        self.session.recv().await
     }
 
     pub async fn close(&self) -> Result<()> {

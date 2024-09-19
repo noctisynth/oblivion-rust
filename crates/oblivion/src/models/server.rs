@@ -75,9 +75,6 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
 
     let callback = router.get_handler(&session.request.entrance)?(session).await?;
 
-    #[cfg(not(any(feature = "perf", feature = "bench")))]
-    let status_code = callback.get_status_code()?;
-
     #[cfg(feature = "perf")]
     println!(
         "业务函数时长: {}μs",
@@ -92,9 +89,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
         .from_bytes(callback.as_bytes()?)?
         .to_stream(&socket)
         .await?;
-    OSC::from_u32(callback.get_status_code()?)
-        .to_stream(&socket)
-        .await?;
+
     socket.close().await?;
 
     #[cfg(feature = "perf")]
@@ -109,13 +104,7 @@ async fn _handle(router: &Router, stream: TcpStream, peer: SocketAddr) -> Result
         ip_addr.cyan(),
         Local::now().format("%d/%m/%Y %H:%M:%S"),
         header.green(),
-        if status_code >= 500 {
-            status_code.to_string().red()
-        } else if (400..500).contains(&status_code) {
-            status_code.to_string().yellow()
-        } else {
-            status_code.to_string().cyan()
-        }
+        "OK".cyan()
     );
 
     Ok(())

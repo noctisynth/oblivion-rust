@@ -141,7 +141,7 @@ impl Session {
         Ok(())
     }
 
-    pub async fn send(&self, data: Vec<u8>, status_code: u32) -> Result<()> {
+    pub async fn send(&self, data: Vec<u8>) -> Result<()> {
         if self.closed().await {
             return Err(Exception::ConnectionClosed.into());
         }
@@ -153,16 +153,16 @@ impl Session {
             .from_bytes(data)?
             .to_stream(socket)
             .await?;
-        OSC::from_u32(status_code).to_stream(socket).await?;
+        // OSC::from_u32(status_code).to_stream(socket).await?;
         Ok(())
     }
 
-    pub async fn send_json(&self, json: Value, status_code: u32) -> Result<()> {
-        self.send(json.to_string().into_bytes(), status_code).await
+    pub async fn send_json(&self, json: Value) -> Result<()> {
+        self.send(json.to_string().into_bytes()).await
     }
 
     pub async fn response(&self, response: BaseResponse) -> Result<()> {
-        self.send(response.as_bytes()?, response.get_status_code()?)
+        self.send(response.as_bytes()?)
             .await
     }
 
@@ -175,8 +175,7 @@ impl Session {
 
         let flag = OSC::from_stream(socket).await?.status_code;
         let content = OED::new(&self.aes_key).from_stream(socket).await?.take();
-        let status_code = OSC::from_stream(socket).await?.status_code;
-        let response = Response::new(None, content, None, status_code, flag);
+        let response = Response::new(None, content, None, flag);
 
         if flag == 1 {
             socket.close().await?;
