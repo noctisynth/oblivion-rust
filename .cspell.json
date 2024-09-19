@@ -14,6 +14,7 @@
         "pymethods",
         "rsproxy",
         "rustc",
+        "serde",
         "startswith",
         "thiserror"
     ]
