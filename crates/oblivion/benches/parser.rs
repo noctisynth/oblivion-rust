@@ -5,7 +5,7 @@ fn criterion_benchmark_parser_request(c: &mut Criterion) {
     let header = "GET / Oblivion/2.0";
     c.bench_function("parser_request", |b| {
         b.iter(|| {
-            OblivionRequest::new(black_box(&header)).unwrap();
+            OblivionRequest::new(black_box(header)).unwrap();
         })
     });
 }

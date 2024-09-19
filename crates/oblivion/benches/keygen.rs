@@ -32,7 +32,7 @@ async fn scrypt(
 }
 
 fn criterion_benchmark_keygen(c: &mut Criterion) {
-    c.bench_function("keygen", |b| b.iter(|| generate_key_pair()));
+    c.bench_function("keygen", |b| b.iter(generate_key_pair));
 }
 
 fn criterion_benchmark_kdf(c: &mut Criterion) {

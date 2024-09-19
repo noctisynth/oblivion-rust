@@ -2,12 +2,12 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use oblivion::{
     models::{router::Router, session::Session},
     path_route,
-    types::server::Result,
+    prelude::ServerResponse,
 };
 use oblivion_codegen::async_route;
 
 #[async_route]
-async fn handler(_: Session) -> Result {
+async fn handler(_: Session) -> ServerResponse {
     todo!()
 }
 
@@ -35,5 +35,9 @@ fn criterion_benchmark_router_less(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, criterion_benchmark_router, criterion_benchmark_router_less);
+criterion_group!(
+    benches,
+    criterion_benchmark_router,
+    criterion_benchmark_router_less
+);
 criterion_main!(benches);
