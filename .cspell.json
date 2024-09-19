@@ -8,6 +8,7 @@
         "encryptor",
         "hkdf",
         "keepalive",
+        "keygen",
         "Noctisynth",
         "nodelay",
         "pyclass",
