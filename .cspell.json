@@ -19,5 +19,8 @@
         "serde",
         "startswith",
         "thiserror"
+    ],
+    "ignorePaths": [
+        "pnpm-lock.yaml"
     ]
 }
