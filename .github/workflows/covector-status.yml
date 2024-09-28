@@ -1,4 +1,4 @@
-name: covector status
+name: Covector Status
 on: [pull_request]
 
 jobs:
