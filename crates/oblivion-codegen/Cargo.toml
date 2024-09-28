@@ -1,6 +1,6 @@
 [package]
 name = "oblivion-codegen"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["苏向夜 <fu050409@163.com>"]
 description = "Oblivion Codegen"
 license = "AGPL-3.0"
