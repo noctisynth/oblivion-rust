@@ -3,6 +3,7 @@
         "backports",
         "chrono",
         "codegen",
+        "covector",
         "decryptor",
         "Deque",
         "encryptor",
