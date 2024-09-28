@@ -1,5 +1,12 @@
 {
   "gitSiteUrl": "https://github.com/noctisynth/oblivion-rust/",
+  "changeTags": {
+    "feat": "New Features",
+    "fix": "Bug Fixes",
+    "perf": "Performance Improvements",
+    "chore": "Chores",
+    "refactor": "Refactors"
+  },
   "pkgManagers": {
     "javascript": {
       "version": true,
