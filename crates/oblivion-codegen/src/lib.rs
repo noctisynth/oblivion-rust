@@ -45,6 +45,14 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
 
     let func_name = &input.sig.ident;
     let func_args = &input.sig.inputs;
+    let func_return = match &input.sig.output {
+        syn::ReturnType::Default => {
+            return TokenStream::from(
+                quote! { compile_error!("Handler function must have a return type"); },
+            )
+        }
+        syn::ReturnType::Type(_, ty) => ty,
+    };
 
     let return_type = match &input.sig.output {
         syn::ReturnType::Default => {
@@ -91,38 +99,29 @@ pub fn async_route(_: TokenStream, item: TokenStream) -> TokenStream {
                 #input_block
             })
         },
-        ReturnType::String => quote! {
+        ReturnType::String | ReturnType::Json => quote! {
             Box::pin(async move {
                 let result = async move {
                     #input_block
                 }.await;
-                Ok(BaseResponse::TextResponse(result))
-            })
-        },
-        ReturnType::Json => quote! {
-            Box::pin(async move {
-                let result = async move {
-                    #input_block
-                }.await;
-                Ok(BaseResponse::JsonResponse(result))
+                Ok(result.into())
             })
         },
         ReturnType::Result(return_type) => match *return_type {
+            ReturnType::String | ReturnType::Json => quote! {
+                Box::pin(async move {
+                    let result: #func_return = async move {
+                        #input_block
+                    }.await;
+                    Ok(result?.into())
+                })
+            },
             ReturnType::ServerResponse => {
                 return TokenStream::from(
                     quote! { compile_error!("Unsupported [ServerResponse] in [Result] return type")},
                 )
             }
-            ReturnType::String => quote! {
-                Box::pin(async move {
-                    let result = async move {
-                        #input_block
-                    }.await?;
-                    Ok(BaseResponse::TextResponse(result))
-                })
-            },
-            ReturnType::Json => todo!(),
-            _ => {
+            ReturnType::Result(_) => {
                 return TokenStream::from(
                     quote! { compile_error!("Unsupported complex [Result] return type")},
                 )
