@@ -23,7 +23,7 @@ hkdf = "0.12"
 
 # Utils
 arc-swap = "1.7.1"
-oblivion-codegen = { workspace = true }
+oblivion-codegen = { version = "^0.3.0", path = "../oblivion-codegen" }
 proc-macro2 = { workspace = true }
 futures = { workspace = true }
 regex = "1"
