@@ -8,7 +8,7 @@ use oblivion::models::session::Session;
 use oblivion::path_route;
 use oblivion::types::Response;
 use oblivion_codegen::async_route;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::env::args;
 use std::sync::Arc;
 use tokio::time::Instant;
@@ -40,12 +40,10 @@ fn json(_session: Session) -> ServerResponse {
 }
 
 #[async_route]
-async fn alive(session: Session) -> ServerResponse {
+async fn alive(session: Session) -> Result<Value> {
     session.send("test".into()).await?;
     assert_eq!(session.recv().await?.text()?, "test");
-    Ok(BaseResponse::JsonResponse(
-        json!({"status": true, "msg": "结束"}),
-    ))
+    Ok(json!({"status": true, "msg": "结束"}))
 }
 
 fn server_callback(res: Response, session: Arc<Session>) -> BoxFuture<'static, bool> {
