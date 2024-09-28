@@ -3,6 +3,7 @@
         "backports",
         "chrono",
         "codegen",
+        "covector",
         "decryptor",
         "Deque",
         "encryptor",
@@ -18,5 +19,8 @@
         "serde",
         "startswith",
         "thiserror"
+    ],
+    "ignorePaths": [
+        "pnpm-lock.yaml"
     ]
 }
