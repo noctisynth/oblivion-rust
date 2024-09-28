@@ -153,7 +153,6 @@ impl Session {
             .from_bytes(data)?
             .to_stream(socket)
             .await?;
-        // OSC::from_u32(status_code).to_stream(socket).await?;
         Ok(())
     }
 
