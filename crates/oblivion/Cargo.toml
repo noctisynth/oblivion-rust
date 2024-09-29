@@ -2,10 +2,10 @@
 name = "oblivion"
 version = "2.2.0"
 authors = ["苏向夜 <fu050409@163.com>"]
-description = "Rust High Concurrency Implementation of Oblivion, an End-to-End Encryption Protocol Based on ECDHE Encryption Algorithm"
+description = "A fast, lightweight, and secure end-to-end encryption protocol based on ECDHE"
 license = "AGPL-3.0"
 repository = "https://github.com/noctisynth/oblivion-rust"
-
+readme = "../../README.md"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -23,7 +23,7 @@ hkdf = "0.12"
 
 # Utils
 arc-swap = "1.7.1"
-oblivion-codegen = { version = "^0.3.0", path = "../oblivion-codegen" }
+oblivion-codegen = { version = "0.3.2", path = "../oblivion-codegen" }
 proc-macro2 = { workspace = true }
 futures = { workspace = true }
 regex = "1"

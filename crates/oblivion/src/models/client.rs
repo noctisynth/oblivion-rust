@@ -4,7 +4,11 @@ use std::sync::Arc;
 use anyhow::{Error, Result};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use tokio::net::TcpStream;
+use tokio::{
+    net::TcpStream,
+    sync::mpsc::{Receiver, Sender},
+    task::JoinHandle,
+};
 
 use crate::exceptions::Exception;
 #[cfg(feature = "pyo3")]
@@ -112,6 +116,8 @@ pub struct Client {
     pub entrance: String,
     pub path: OblivionPath,
     pub session: Arc<Session>,
+    sender: Arc<Sender<Response>>,
+    receiver: Receiver<Response>,
 }
 
 impl Client {
@@ -134,11 +140,27 @@ impl Client {
 
         session.handshake(0).await?;
 
+        let (sender, receiver) = tokio::sync::mpsc::channel(1024);
         Ok(Self {
             entrance: entrance.to_string(),
             path,
             session: Arc::new(session),
+            sender: Arc::new(sender),
+            receiver,
         })
+    }
+
+    pub async fn listen(&self) -> JoinHandle<()> {
+        let session = self.session.clone();
+        let sender = self.sender.clone();
+        tokio::spawn(async move {
+            let response = session.recv().await.unwrap();
+            sender.send(response).await.unwrap();
+        })
+    }
+
+    pub async fn next(&mut self) -> Option<Response> {
+        self.receiver.recv().await
     }
 
     pub async fn send(&self, data: Vec<u8>) -> Result<()> {

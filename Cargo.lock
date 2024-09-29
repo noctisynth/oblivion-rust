@@ -688,7 +688,7 @@ dependencies = [
 
 [[package]]
 name = "oblivion-codegen"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "futures",
  "proc-macro2",
