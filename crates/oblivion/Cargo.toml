@@ -1,6 +1,6 @@
 [package]
 name = "oblivion"
-version = "2.2.0"
+version = "2.2.1"
 authors = ["苏向夜 <fu050409@163.com>"]
 description = "A fast, lightweight, and secure end-to-end encryption protocol based on ECDHE"
 license = "AGPL-3.0"
