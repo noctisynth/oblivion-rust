@@ -20,7 +20,7 @@ pub struct AbsoluteNonceSequence<'a> {
     nonce: &'a [u8],
 }
 
-impl<'a> NonceSequence for AbsoluteNonceSequence<'a> {
+impl NonceSequence for AbsoluteNonceSequence<'_> {
     fn advance(&mut self) -> Result<Nonce, Unspecified> {
         Nonce::try_assume_unique_for_key(self.nonce)
     }
